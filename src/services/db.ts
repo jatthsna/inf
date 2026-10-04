@@ -235,6 +235,59 @@ class DatabaseManager {
     }, 400);
   }
 
+  public async syncUpToCloud(): Promise<{ success: boolean; message: string }> {
+    const client = supabase;
+    if (!client) {
+      return { success: false, message: 'Koneksi Supabase belum aktif.' };
+    }
+    try {
+      const { error } = await client.from('app_cloud_store').upsert({
+        id: 'kas_info_prod_v2',
+        data: this.state,
+        updated_at: new Date().toISOString()
+      });
+      if (error) {
+        return { success: false, message: `Gagal upload ke cloud: ${error.message}` };
+      }
+      return { success: true, message: 'Semua data dari perangkat ini berhasil diunggah ke Cloud Supabase!' };
+    } catch (e: any) {
+      return { success: false, message: e?.message || 'Gagal sinkron ke cloud.' };
+    }
+  }
+
+  public async syncDownFromCloud(): Promise<{ success: boolean; message: string }> {
+    const client = supabase;
+    if (!client) {
+      return { success: false, message: 'Koneksi Supabase belum aktif.' };
+    }
+    try {
+      const { data, error } = await client
+        .from('app_cloud_store')
+        .select('data, updated_at')
+        .eq('id', 'kas_info_prod_v2')
+        .maybeSingle();
+
+      if (error) {
+        return { success: false, message: `Gagal mengambil data dari cloud: ${error.message}` };
+      }
+      if (!data || !data.data) {
+        return { success: false, message: 'Belum ada data tersimpan di Cloud Supabase.' };
+      }
+      const cloudState = data.data as AppDatabaseState;
+      this.isSyncingFromCloud = true;
+      this.state = {
+        ...getInitialSeedData(),
+        ...cloudState
+      };
+      this.saveToStorage(this.state);
+      this.isSyncingFromCloud = false;
+      this.listeners.forEach(fn => fn());
+      return { success: true, message: 'Berhasil menyinkronkan data terbaru dari Cloud Supabase!' };
+    } catch (e: any) {
+      return { success: false, message: e?.message || 'Gagal sinkron dari cloud.' };
+    }
+  }
+
   private loadFromStorage(): AppDatabaseState {
     if (typeof window === 'undefined') {
       return getInitialSeedData();
