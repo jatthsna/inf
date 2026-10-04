@@ -99,7 +99,7 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ activeAcademicYear }) 
                 Fakultas Matematika dan Ilmu Komputer (FMIKOM) · Program Studi Informatika
               </h2>
               <p className="text-[11px] text-slate-600 mt-0.5">
-                Pengelola Kas Mahasiswa & Himpunan Mahasiswa Informatika (HIMAIF) UNUGHA Cilacap
+                Pengurus & Kas Kelas Mahasiswa Informatika UNUGHA Cilacap
               </p>
             </div>
           </div>
@@ -265,21 +265,31 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ activeAcademicYear }) 
             <div className="space-y-16">
               <p className="text-slate-400 print:text-slate-700">
                 Mengetahui,<br />
-                <strong className="text-white print:text-black">Ketua Himpunan / Komti</strong>
+                <strong className="text-white print:text-black">Koordinator Kelas (Korlas)</strong>
               </p>
-              <p className="font-bold text-white underline print:text-black">
-                ( ............................................ )
-              </p>
+              <div>
+                <p className="font-bold text-white underline print:text-black">
+                  {settings.korlas_name || 'Adam Satrol'}
+                </p>
+                <p className="text-[10px] text-slate-400 print:text-slate-600 mt-0.5">
+                  Koordinator Kelas Informatika
+                </p>
+              </div>
             </div>
 
             <div className="space-y-16">
               <p className="text-slate-400 print:text-slate-700">
                 Disusun Oleh,<br />
-                <strong className="text-white print:text-black">Bendahara Kas Informatika</strong>
+                <strong className="text-white print:text-black">Bendahara Kas Kelas</strong>
               </p>
-              <p className="font-bold text-white underline print:text-black">
-                {settings.contact_person_name || '( ............................................ )'}
-              </p>
+              <div>
+                <p className="font-bold text-white underline print:text-black">
+                  {settings.contact_person_name || 'Bendahara Kelas'}
+                </p>
+                <p className="text-[10px] text-slate-400 print:text-slate-600 mt-0.5">
+                  Pengurus Kas Kelas Informatika
+                </p>
+              </div>
             </div>
           </div>
         </div>

@@ -41,6 +41,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onNavigateTab }) => 
   const [settings, setSettings] = useState<AppSettings>(() => db.getSettings());
   const [departmentName, setDepartmentName] = useState(settings.department_name);
   const [className, setClassName] = useState(settings.class_name);
+  const [korlasName, setKorlasName] = useState(settings.korlas_name || 'Adam Satrol');
   const [defaultAmount, setDefaultAmount] = useState(settings.default_monthly_amount);
   const [contactName, setContactName] = useState(settings.contact_person_name);
   const [contactPhone, setContactPhone] = useState(settings.contact_person_phone);
@@ -88,6 +89,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onNavigateTab }) => 
         setDefaultAmount(cur.default_monthly_amount);
         setContactName(cur.contact_person_name);
         setContactPhone(cur.contact_person_phone);
+        setKorlasName(cur.korlas_name || 'Adam Satrol');
         setDefaultLynkUrl(cur.lynk_default_url);
         setAppLogoUrl(cur.app_logo_url || '');
       }
@@ -104,6 +106,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onNavigateTab }) => 
     setDefaultAmount(cur.default_monthly_amount);
     setContactName(cur.contact_person_name);
     setContactPhone(cur.contact_person_phone);
+    setKorlasName(cur.korlas_name || 'Adam Satrol');
     setDefaultLynkUrl(cur.lynk_default_url);
     setAppLogoUrl(cur.app_logo_url || '');
   }, []);
@@ -164,6 +167,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onNavigateTab }) => 
     db.updateSettings({
       department_name: departmentName.trim(),
       class_name: className.trim(),
+      korlas_name: korlasName.trim() || 'Adam Satrol',
       default_monthly_amount: Number(defaultAmount),
       contact_person_name: contactName.trim(),
       contact_person_phone: contactPhone.trim(),
@@ -298,6 +302,23 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onNavigateTab }) => 
               className="w-full px-3.5 py-2 bg-slate-950 border border-slate-800 rounded-lg text-xs text-white focus:outline-none focus:border-blue-500"
               required
             />
+          </div>
+
+          <div className="sm:col-span-2">
+            <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+              Nama Koordinator Kelas (Korlas)
+            </label>
+            <input
+              type="text"
+              value={korlasName}
+              onChange={(e) => setKorlasName(e.target.value)}
+              placeholder="Contoh: Adam Satrol"
+              className="w-full px-3.5 py-2 bg-slate-950 border border-slate-800 rounded-lg text-xs text-white focus:outline-none focus:border-blue-500"
+              required
+            />
+            <p className="text-[11px] text-slate-400 mt-1">
+              Nama Korlas otomatis tercantum sebagai pihak pengesah pada lembar tanda tangan laporan kas dan kuitansi pembayaran resmi.
+            </p>
           </div>
         </div>
 

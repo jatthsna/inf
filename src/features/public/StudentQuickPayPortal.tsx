@@ -86,6 +86,25 @@ export const StudentQuickPayPortal: React.FC<StudentQuickPayPortalProps> = ({ on
     return db.subscribe(reloadData);
   }, []);
 
+  // Auto-dismiss notification alerts after 4-5 seconds
+  useEffect(() => {
+    if (successMessage) {
+      const timer = setTimeout(() => {
+        setSuccessMessage(null);
+      }, 4500);
+      return () => clearTimeout(timer);
+    }
+  }, [successMessage]);
+
+  useEffect(() => {
+    if (errorMessage) {
+      const timer = setTimeout(() => {
+        setErrorMessage(null);
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [errorMessage]);
+
   useEffect(() => {
     if (classes.length > 0 && !newClassId) {
       setNewClassId(classes[0].id);

@@ -83,7 +83,7 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
                   Fakultas Matematika dan Ilmu Komputer (FMIKOM) · Program Studi Informatika
                 </h2>
                 <p className="text-[11px] text-slate-600 mt-0.5">
-                  Badan Pengelola Kas & Himpunan Mahasiswa Informatika (HIMAIF) UNUGHA
+                  Pengurus & Kas Kelas Mahasiswa Informatika UNUGHA Cilacap
                 </p>
               </div>
             </div>
@@ -177,11 +177,11 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
               <p className="text-[11px] text-slate-500">
                 Diverifikasi pada {formatDateID(payment.verified_at || payment.payment_date)}
               </p>
-              <div className="mt-6 mb-1">
+              <div className="mt-4 mb-1">
                 <p className="font-bold text-slate-900 underline decoration-slate-400 underline-offset-4">
-                  Bendahara Kas Informatika
+                  Adam Satrol
                 </p>
-                <p className="text-[10px] text-slate-500">Divisi Keuangan HMTI</p>
+                <p className="text-[10px] text-slate-500 font-medium">Koordinator Kelas (Korlas) Informatika</p>
               </div>
             </div>
           </div>

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Bell, Check, Clock, Info, CheckCircle2, AlertTriangle, AlertCircle, ExternalLink } from 'lucide-react';
+import { Bell, Check, Clock, Info, CheckCircle2, AlertTriangle, AlertCircle, X } from 'lucide-react';
 import { db } from '../../services/db';
 import { AppNotification } from '../../types';
 import { useAuth } from '../../context/AuthContext';
@@ -21,6 +21,7 @@ export const NotificationCenter: React.FC = () => {
     return db.subscribe(updateNotifs);
   }, [currentUser.id, role]);
 
+  // Click outside to close
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
@@ -30,6 +31,15 @@ export const NotificationCenter: React.FC = () => {
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  // Auto-close after 6 seconds if left idle
+  useEffect(() => {
+    if (!isOpen) return;
+    const timer = setTimeout(() => {
+      setIsOpen(false);
+    }, 6000);
+    return () => clearTimeout(timer);
+  }, [isOpen]);
 
   const unreadCount = notifications.filter(n => !n.is_read).length;
 
@@ -41,6 +51,8 @@ export const NotificationCenter: React.FC = () => {
     if (!notif.is_read) {
       db.markNotificationAsRead(notif.id);
     }
+    // Auto-close dropdown when an item is clicked
+    setIsOpen(false);
   };
 
   const getIcon = (type: AppNotification['type']) => {
@@ -72,7 +84,8 @@ export const NotificationCenter: React.FC = () => {
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-80 sm:w-96 rounded-2xl bg-[#151F32] border border-[#26354D] shadow-2xl py-3 z-50">
+        <div className="absolute right-0 mt-2 w-80 sm:w-96 rounded-2xl bg-[#151F32] border border-[#26354D] shadow-2xl py-3 z-50 animate-in fade-in zoom-in-95 duration-150">
+          {/* Header */}
           <div className="flex items-center justify-between px-4 pb-3 border-b border-[#26354D]">
             <div className="flex items-center gap-2">
               <h4 className="text-sm font-bold text-white">Notifikasi</h4>
@@ -82,17 +95,27 @@ export const NotificationCenter: React.FC = () => {
                 </span>
               )}
             </div>
-            {unreadCount > 0 && (
+            <div className="flex items-center gap-2">
+              {unreadCount > 0 && (
+                <button
+                  onClick={handleMarkAllRead}
+                  className="text-xs text-cyan-400 hover:text-cyan-300 flex items-center gap-1 font-medium"
+                >
+                  <Check className="w-3.5 h-3.5" />
+                  <span>Tandai dibaca</span>
+                </button>
+              )}
               <button
-                onClick={handleMarkAllRead}
-                className="text-xs text-cyan-400 hover:text-cyan-300 flex items-center gap-1"
+                onClick={() => setIsOpen(false)}
+                className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+                title="Tutup Notifikasi"
               >
-                <Check className="w-3.5 h-3.5" />
-                Tandai dibaca
+                <X className="w-4 h-4" />
               </button>
-            )}
+            </div>
           </div>
 
+          {/* List */}
           <div className="max-h-80 overflow-y-auto divide-y divide-[#26354D]/50">
             {notifications.length === 0 ? (
               <div className="py-8 text-center text-xs text-slate-400">
@@ -130,6 +153,17 @@ export const NotificationCenter: React.FC = () => {
                 </div>
               ))
             )}
+          </div>
+
+          {/* Footer with auto-close notice */}
+          <div className="pt-2.5 px-4 border-t border-[#26354D]/60 flex items-center justify-between text-[11px] text-slate-500">
+            <span>Otomatis menutup jika tidak aktif</span>
+            <button
+              onClick={() => setIsOpen(false)}
+              className="text-cyan-400 hover:underline font-medium"
+            >
+              Tutup Sekarang
+            </button>
           </div>
         </div>
       )}

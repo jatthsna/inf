@@ -300,7 +300,7 @@ export const PaymentLinksPage: React.FC = () => {
               required
             />
             <p className="text-[11px] text-slate-500 mt-1">
-              Gunakan URL valid dari akun Lynk.id kelas/himpunan Anda.
+              Gunakan URL valid dari akun Lynk.id atau e-wallet kelas Anda.
             </p>
           </div>
 

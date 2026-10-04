@@ -182,6 +182,7 @@ export interface AppSettings {
   faculty_name?: string;
   university_name?: string;
   class_name: string;
+  korlas_name?: string; // Koordinator Kelas (default: Adam Satrol)
   academic_year_id: string;
   default_monthly_amount: number;
   contact_person_name: string;

@@ -123,6 +123,7 @@ function getInitialSeedData(): AppDatabaseState {
     faculty_name: 'FMIKOM (Fakultas Matematika dan Ilmu Komputer)',
     university_name: 'Universitas Nahdlatul Ulama Al Ghazali (UNUGHA) Cilacap',
     class_name: 'Informatika 2024',
+    korlas_name: 'Adam Satrol',
     academic_year_id: 'a0000000-0000-0000-0000-000000000001',
     default_monthly_amount: 10000,
     contact_person_name: 'Bendahara Kas',
@@ -2004,7 +2005,10 @@ class DatabaseManager {
   // APP SETTINGS
   // ----------------------------------------------------
   public getSettings(): AppSettings {
-    return { ...this.state.app_settings };
+    return { 
+      ...this.state.app_settings,
+      korlas_name: this.state.app_settings.korlas_name || 'Adam Satrol'
+    };
   }
 
   public updateSettings(updates: Partial<AppSettings>, actorProfile?: UserProfile): void {
