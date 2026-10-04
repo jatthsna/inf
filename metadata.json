@@ -1,0 +1,6 @@
+{
+  "name": "KAS INFORMATIKA",
+  "description": "Sistem Manajemen Kas Kelas & Program Studi Informatika - Full-Stack Financial Platform",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

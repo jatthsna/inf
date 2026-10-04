@@ -1,0 +1,20 @@
+PANDUAN MENGGANTI LOGO APLIKASI KAS INFORMATIKA
+==============================================
+
+Ada 2 cara praktis untuk mengganti logo sesuai keinginan Anda:
+
+CARA 1: Melalui Dashboard Pengurus (Paling Mudah, Tanpa Edit Kode)
+-----------------------------------------------------------------
+1. Buka aplikasi, klik "Pengurus" di pojok kanan atas.
+2. Masuk ke menu "Pengaturan Kas" di sidebar.
+3. Pada bagian "Logo Aplikasi Kas", Anda bisa:
+   - Klik "Pilih File Logo" untuk mengunggah gambar logo Anda (PNG / JPG / SVG / WebP) langsung dari komputer/HP.
+   - Atau masukkan URL gambar logo Anda.
+4. Klik tombol "Simpan Pengaturan". Logo akan otomatis terpasang di seluruh halaman aplikasi!
+
+CARA 2: Melalui File Statis (Untuk Developer)
+---------------------------------------------
+1. Masukkan file logo Anda ke dalam folder:
+   /public/logo.png  (atau /public/logo.svg)
+2. Di file "src/components/common/UnughaLogo.tsx", aplikasi sudah disiapkan untuk membaca file tersebut secara otomatis.
+3. Anda juga dapat mengganti kode SVG langsung di dalam "src/components/common/UnughaLogo.tsx" jika logo berformat vektor.
