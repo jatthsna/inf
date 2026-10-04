@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { db } from '../../services/db';
+import { AppSettings } from '../../types';
 
 interface UnughaLogoProps {
   className?: string;
@@ -11,6 +12,7 @@ interface UnughaLogoProps {
 /**
  * Logo Kas Mahasiswa (UNUGHA Cilacap)
  * Mendukung logo kustom yang diunggah pengguna atau logo bawaan UNUGHA.
+ * Otomatis reaktif terhadap perubahan pengaturan dan mendukung sub-path GitHub Pages.
  */
 export const UnughaLogo: React.FC<UnughaLogoProps> = ({
   className = 'w-9 h-9',
@@ -18,13 +20,42 @@ export const UnughaLogo: React.FC<UnughaLogoProps> = ({
   showText = false,
   src
 }) => {
-  const settings = db.getSettings();
-  const effectiveLogoUrl = src || settings.app_logo_url;
+  const [settings, setSettings] = useState<AppSettings>(() => db.getSettings());
   const [imageError, setImageError] = useState(false);
+
+  // Subscribe to realtime changes in db settings (e.g. when admin changes logo)
+  useEffect(() => {
+    const unsub = db.subscribe(() => {
+      setSettings(db.getSettings());
+    });
+    return unsub;
+  }, []);
+
+  const rawUrl = src !== undefined ? src : (settings.app_logo_url || 'logo.png');
+
+  // Reset image error state whenever URL source changes
+  useEffect(() => {
+    setImageError(false);
+  }, [rawUrl]);
+
+  // Resolve URL for relative paths, external URLs, and Vite base path (GitHub Pages)
+  const effectiveLogoUrl = useMemo(() => {
+    if (!rawUrl || !rawUrl.trim()) return undefined;
+    const trimmed = rawUrl.trim();
+    // Data URIs, blob URIs, or full external URLs
+    if (trimmed.startsWith('data:') || trimmed.startsWith('blob:') || /^https?:\/\//i.test(trimmed)) {
+      return trimmed;
+    }
+    // Relative paths e.g. "/logo.png" or "logo.png"
+    const cleanPath = trimmed.replace(/^\.?\//, '');
+    const base = import.meta.env.BASE_URL || './';
+    const normalizedBase = base.endsWith('/') ? base : `${base}/`;
+    return `${normalizedBase}${cleanPath}`;
+  }, [rawUrl]);
 
   const style = size ? { width: size, height: size } : undefined;
 
-  // Render custom image logo if set
+  // Render custom image logo if set and not errored
   if (effectiveLogoUrl && !imageError) {
     return (
       <div className={`inline-flex items-center gap-2.5 ${showText ? '' : 'shrink-0'}`}>

@@ -128,6 +128,7 @@ function getInitialSeedData(): AppDatabaseState {
     contact_person_name: 'Bendahara Kas',
     contact_person_phone: '081298765432',
     lynk_default_url: 'https://lynk.id/kas-informatika',
+    app_logo_url: 'logo.png',
     enable_email_notifications: true,
     updated_at: new Date().toISOString()
   };
@@ -151,9 +152,87 @@ function getInitialSeedData(): AppDatabaseState {
 class DatabaseManager {
   private state: AppDatabaseState;
   private listeners: Set<() => void> = new Set();
+  private isSyncingFromCloud = false;
+  private syncTimeout: any = null;
 
   constructor() {
     this.state = this.loadFromStorage();
+    this.initCloudSync();
+  }
+
+  private async initCloudSync() {
+    if (typeof window === 'undefined') return;
+    const client = supabase;
+    if (!client) return;
+
+    try {
+      // 1. Fetch latest state from cloud store
+      const { data, error } = await client
+        .from('app_cloud_store')
+        .select('data, updated_at')
+        .eq('id', 'kas_info_prod_v2')
+        .maybeSingle();
+
+      if (!error && data && data.data) {
+        const cloudState = data.data as AppDatabaseState;
+        if (Array.isArray(cloudState.bills) && cloudState.app_settings) {
+          this.isSyncingFromCloud = true;
+          this.state = {
+            ...getInitialSeedData(),
+            ...cloudState
+          };
+          this.saveToStorage(this.state);
+          this.isSyncingFromCloud = false;
+          this.listeners.forEach(fn => fn());
+        }
+      } else if (!data) {
+        // First-time sync push
+        this.pushStateToCloud();
+      }
+
+      // 2. Realtime subscription: any device update automatically syncs to all other devices!
+      client
+        .channel('realtime:app_cloud_store')
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'app_cloud_store' },
+          (payload: any) => {
+            if (payload?.new && payload.new.data && !this.isSyncingFromCloud) {
+              const incoming = payload.new.data as AppDatabaseState;
+              if (Array.isArray(incoming.bills)) {
+                this.isSyncingFromCloud = true;
+                this.state = incoming;
+                this.saveToStorage(incoming);
+                this.isSyncingFromCloud = false;
+                this.listeners.forEach(fn => fn());
+              }
+            }
+          }
+        )
+        .subscribe();
+    } catch (err) {
+      console.warn('Supabase cloud sync info:', err);
+    }
+  }
+
+  // Push current state to Supabase cloud (debounced 400ms)
+  private pushStateToCloud() {
+    if (this.isSyncingFromCloud) return;
+    if (this.syncTimeout) clearTimeout(this.syncTimeout);
+
+    this.syncTimeout = setTimeout(async () => {
+      const client = supabase;
+      if (!client) return;
+      try {
+        await client.from('app_cloud_store').upsert({
+          id: 'kas_info_prod_v2',
+          data: this.state,
+          updated_at: new Date().toISOString()
+        });
+      } catch {
+        // Silently fallback if table not yet created
+      }
+    }, 400);
   }
 
   private loadFromStorage(): AppDatabaseState {
@@ -202,6 +281,7 @@ class DatabaseManager {
 
   private notify() {
     this.saveToStorage(this.state);
+    this.pushStateToCloud();
     this.listeners.forEach(fn => fn());
   }
 
@@ -1823,6 +1903,47 @@ class DatabaseManager {
     });
 
     this.notify();
+  }
+
+  // Export full database state as a JSON string for multi-device backup / transfer
+  public exportDatabaseJSON(): string {
+    return JSON.stringify({
+      version: '1.0.0',
+      exported_at: new Date().toISOString(),
+      state: this.state
+    }, null, 2);
+  }
+
+  // Import full database state from JSON string
+  public importDatabaseJSON(jsonStr: string, actorProfile?: UserProfile): { success: boolean; message: string } {
+    try {
+      const parsed = JSON.parse(jsonStr);
+      const incomingState = parsed.state || parsed;
+
+      if (!incomingState || !Array.isArray(incomingState.bills) || !incomingState.app_settings) {
+        return { success: false, message: 'Format berkas cadangan data tidak valid.' };
+      }
+
+      this.state = {
+        ...getInitialSeedData(),
+        ...incomingState
+      };
+
+      this.recordAuditLog({
+        user_id: actorProfile?.id,
+        user_name: actorProfile?.full_name,
+        user_role: actorProfile?.role,
+        action: 'IMPORT_DATA',
+        entity_type: 'database',
+        entity_id: 'full_restore',
+        description: 'Memulihkan data kas dari berkas cadangan (JSON)'
+      });
+
+      this.notify();
+      return { success: true, message: 'Data kas berhasil dipulihkan sepenuhnya.' };
+    } catch (e: any) {
+      return { success: false, message: `Gagal membaca berkas: ${e?.message || 'Format tidak dikenali'}` };
+    }
   }
 
   // Reset to initial seed data

@@ -1,8 +1,11 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
-// Read from env or local configuration
-const ENV_SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || '';
-const ENV_SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
+// Default Supabase project credentials for production cloud sync
+const DEFAULT_SUPABASE_URL = 'https://xolgtadrooyrbcgytneo.supabase.co';
+const DEFAULT_SUPABASE_ANON_KEY = 'sb_publishable_mjAFMmLLlFwDBbmeQt35QA_J21dQDoi';
+
+const ENV_SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || DEFAULT_SUPABASE_URL;
+const ENV_SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || DEFAULT_SUPABASE_ANON_KEY;
 
 const STORED_URL_KEY = 'kas_info_supabase_url';
 const STORED_KEY_KEY = 'kas_info_supabase_key';
@@ -70,14 +73,17 @@ export async function checkSupabaseConnection(): Promise<{ ok: boolean; message:
     return { ok: false, message: 'URL atau Anon Key Supabase belum dikonfigurasi.' };
   }
   try {
-    const { error } = await client.from('academic_years').select('id').limit(1);
+    const { error } = await client.from('app_cloud_store').select('id').limit(1);
     if (error) {
-      if (error.code === '42P01') {
-        return { ok: true, message: 'Terhubung ke Supabase, namun tabel belum dibuat. Jalankan schema.sql di Supabase SQL Editor.' };
+      if (error.code === '42P01' || (error.message && error.message.includes('Could not find the table'))) {
+        return { 
+          ok: true, 
+          message: 'Terhubung ke server Supabase! Silakan jalankan script SQL di Supabase SQL Editor agar tabel dibuat.' 
+        };
       }
       return { ok: false, message: `Koneksi gagal: ${error.message}` };
     }
-    return { ok: true, message: 'Berhasil terhubung ke database Supabase!' };
+    return { ok: true, message: 'Berhasil terhubung ke database Supabase Cloud! Sinkronisasi aktif.' };
   } catch (err: any) {
     return { ok: false, message: err?.message || 'Gagal menghubungi server Supabase.' };
   }
