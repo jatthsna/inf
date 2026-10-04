@@ -14,7 +14,9 @@ import {
   FileText, 
   Tag,
   Pencil,
-  Trash2
+  Trash2,
+  CheckCircle2,
+  Sparkles
 } from 'lucide-react';
 
 interface IncomePageProps {
@@ -32,6 +34,8 @@ export const IncomePage: React.FC<IncomePageProps> = ({ activeAcademicYear }) =>
   const [amount, setAmount] = useState<number>(100000);
   const [receivedDate, setReceivedDate] = useState(() => new Date().toISOString().split('T')[0]);
   const [notes, setNotes] = useState('');
+  const [isSuccess, setIsSuccess] = useState(false);
+  const [successInfo, setSuccessInfo] = useState<{ sourceName: string; amount: number } | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const reloadData = () => {
@@ -52,6 +56,8 @@ export const IncomePage: React.FC<IncomePageProps> = ({ activeAcademicYear }) =>
     setAmount(100000);
     setReceivedDate(new Date().toISOString().split('T')[0]);
     setNotes('');
+    setIsSuccess(false);
+    setSuccessInfo(null);
     setError(null);
     setIsModalOpen(true);
   };
@@ -63,6 +69,8 @@ export const IncomePage: React.FC<IncomePageProps> = ({ activeAcademicYear }) =>
     setAmount(item.amount);
     setReceivedDate(item.received_date);
     setNotes(item.notes || '');
+    setIsSuccess(false);
+    setSuccessInfo(null);
     setError(null);
     setIsModalOpen(true);
   };
@@ -94,9 +102,19 @@ export const IncomePage: React.FC<IncomePageProps> = ({ activeAcademicYear }) =>
         }, currentUser);
       }
 
-      setIsModalOpen(false);
-      setEditingIncome(null);
+      setSuccessInfo({
+        sourceName: sourceName.trim(),
+        amount: Number(amount)
+      });
+      setIsSuccess(true);
       reloadData();
+
+      // Auto close modal after 1.6s
+      setTimeout(() => {
+        setIsModalOpen(false);
+        setEditingIncome(null);
+        setIsSuccess(false);
+      }, 1600);
     } catch (err: any) {
       setError(err.message || 'Gagal menyimpan pemasukan.');
     }
@@ -256,17 +274,56 @@ export const IncomePage: React.FC<IncomePageProps> = ({ activeAcademicYear }) =>
         onClose={() => {
           setIsModalOpen(false);
           setEditingIncome(null);
+          setIsSuccess(false);
         }}
-        title={editingIncome ? 'Edit Pemasukan Kas Non-Tagihan' : 'Catat Pemasukan Kas Lain'}
-        subtitle="Dana akan langsung disesuaikan pada Saldo Kas program studi"
+        title={isSuccess ? 'Pemasukan Berhasil Dicatat!' : (editingIncome ? 'Edit Pemasukan Kas Non-Tagihan' : 'Catat Pemasukan Kas Lain')}
+        subtitle={isSuccess ? 'Saldo kas program studi telah disesuaikan' : 'Dana akan langsung disesuaikan pada Saldo Kas program studi'}
         maxWidth="md"
       >
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {error && (
-            <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-300 text-xs">
-              {error}
+        {isSuccess && successInfo ? (
+          <div className="py-6 px-4 text-center space-y-4 animate-in fade-in zoom-in-95 duration-300">
+            <div className="relative inline-flex items-center justify-center">
+              <div className="absolute -inset-3 rounded-full bg-cyan-500/20 animate-ping opacity-75" />
+              <div className="w-20 h-20 rounded-full bg-gradient-to-tr from-cyan-500 to-blue-500 flex items-center justify-center shadow-[0_0_30px_rgba(34,211,238,0.5)]">
+                <CheckCircle2 className="w-10 h-10 text-slate-950 stroke-[2.5]" />
+              </div>
             </div>
-          )}
+
+            <div className="space-y-1">
+              <h3 className="text-lg font-bold text-white tracking-tight flex items-center justify-center gap-1.5">
+                <span>Pemasukan Berhasil Disimpan!</span>
+                <Sparkles className="w-4 h-4 text-cyan-400" />
+              </h3>
+              <p className="text-xs text-slate-400">
+                Data pemasukan telah tersimpan dan saldo kas otomatis bertambah.
+              </p>
+            </div>
+
+            <div className="p-3.5 rounded-xl bg-slate-900 border border-cyan-500/30 text-xs text-left space-y-2">
+              <div className="flex justify-between items-center text-slate-400">
+                <span>Sumber Dana:</span>
+                <span className="text-white font-semibold truncate max-w-[200px]">{successInfo.sourceName}</span>
+              </div>
+              <div className="flex justify-between items-center text-slate-400 pt-1 border-t border-slate-800">
+                <span>Nominal Pemasukan:</span>
+                <span className="text-emerald-400 font-mono font-bold text-sm">+{formatCurrency(successInfo.amount)}</span>
+              </div>
+            </div>
+
+            <div className="space-y-1.5 pt-2">
+              <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                <div className="h-full bg-cyan-400 rounded-full animate-[progress_1.6s_ease-out_forwards]" style={{ width: '100%' }} />
+              </div>
+              <span className="text-[11px] text-slate-500">Menutup otomatis...</span>
+            </div>
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit} className="space-y-4">
+            {error && (
+              <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-300 text-xs">
+                {error}
+              </div>
+            )}
 
           <div>
             <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">
@@ -370,6 +427,7 @@ export const IncomePage: React.FC<IncomePageProps> = ({ activeAcademicYear }) =>
             </button>
           </div>
         </form>
+      )}
       </Modal>
 
       {/* Delete Confirmation Modal */}

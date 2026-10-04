@@ -18,7 +18,9 @@ import {
   Tag, 
   FileText,
   ExternalLink,
-  Loader2
+  Loader2,
+  CheckCircle2,
+  Sparkles
 } from 'lucide-react';
 
 interface ExpensesPageProps {
@@ -40,6 +42,8 @@ export const ExpensesPage: React.FC<ExpensesPageProps> = ({ activeAcademicYear }
   const [notes, setNotes] = useState('');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false);
+  const [successInfo, setSuccessInfo] = useState<{ description: string; amount: number } | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const reloadData = () => {
@@ -60,6 +64,8 @@ export const ExpensesPage: React.FC<ExpensesPageProps> = ({ activeAcademicYear }
     setExpenseDate(new Date().toISOString().split('T')[0]);
     setNotes('');
     setSelectedFile(null);
+    setIsSuccess(false);
+    setSuccessInfo(null);
     setError(null);
     setIsModalOpen(true);
   };
@@ -93,8 +99,18 @@ export const ExpensesPage: React.FC<ExpensesPageProps> = ({ activeAcademicYear }
         notes: notes.trim()
       }, currentUser);
 
-      setIsModalOpen(false);
+      setSuccessInfo({
+        description: description.trim(),
+        amount: Number(amount)
+      });
+      setIsSuccess(true);
       reloadData();
+
+      // Auto close after 1.6s
+      setTimeout(() => {
+        setIsModalOpen(false);
+        setIsSuccess(false);
+      }, 1600);
     } catch (err: any) {
       setError(err.message || 'Gagal menyimpan pengeluaran.');
     } finally {
@@ -207,17 +223,58 @@ export const ExpensesPage: React.FC<ExpensesPageProps> = ({ activeAcademicYear }
       {/* Add Modal */}
       <Modal
         isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        title="Catat Pengeluaran Kas"
-        subtitle="Nominal akan mengurangi saldo kas riil secara otomatis"
+        onClose={() => {
+          setIsModalOpen(false);
+          setIsSuccess(false);
+        }}
+        title={isSuccess ? 'Pengeluaran Berhasil Dicatat!' : 'Catat Pengeluaran Kas'}
+        subtitle={isSuccess ? 'Saldo kas riil telah terpotong secara otomatis' : 'Nominal akan mengurangi saldo kas riil secara otomatis'}
         maxWidth="md"
       >
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {error && (
-            <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-300 text-xs">
-              {error}
+        {isSuccess && successInfo ? (
+          <div className="py-6 px-4 text-center space-y-4 animate-in fade-in zoom-in-95 duration-300">
+            <div className="relative inline-flex items-center justify-center">
+              <div className="absolute -inset-3 rounded-full bg-purple-500/20 animate-ping opacity-75" />
+              <div className="w-20 h-20 rounded-full bg-gradient-to-tr from-purple-600 to-indigo-500 flex items-center justify-center shadow-[0_0_30px_rgba(168,85,247,0.5)]">
+                <CheckCircle2 className="w-10 h-10 text-white stroke-[2.5]" />
+              </div>
             </div>
-          )}
+
+            <div className="space-y-1">
+              <h3 className="text-lg font-bold text-white tracking-tight flex items-center justify-center gap-1.5">
+                <span>Pengeluaran Berhasil Dibukukan!</span>
+                <Sparkles className="w-4 h-4 text-purple-400" />
+              </h3>
+              <p className="text-xs text-slate-400">
+                Pengeluaran telah tercatat dan saldo kas otomatis berkurang.
+              </p>
+            </div>
+
+            <div className="p-3.5 rounded-xl bg-slate-900 border border-purple-500/30 text-xs text-left space-y-2">
+              <div className="flex justify-between items-center text-slate-400">
+                <span>Keperluan:</span>
+                <span className="text-white font-semibold truncate max-w-[200px]">{successInfo.description}</span>
+              </div>
+              <div className="flex justify-between items-center text-slate-400 pt-1 border-t border-slate-800">
+                <span>Nominal Pengeluaran:</span>
+                <span className="text-rose-400 font-mono font-bold text-sm">-{formatCurrency(successInfo.amount)}</span>
+              </div>
+            </div>
+
+            <div className="space-y-1.5 pt-2">
+              <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                <div className="h-full bg-purple-500 rounded-full animate-[progress_1.6s_ease-out_forwards]" style={{ width: '100%' }} />
+              </div>
+              <span className="text-[11px] text-slate-500">Menutup otomatis...</span>
+            </div>
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit} className="space-y-4">
+            {error && (
+              <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-300 text-xs">
+                {error}
+              </div>
+            )}
 
           <div>
             <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">
@@ -324,6 +381,7 @@ export const ExpensesPage: React.FC<ExpensesPageProps> = ({ activeAcademicYear }
             </button>
           </div>
         </form>
+      )}
       </Modal>
 
       {/* Delete Confirmation */}

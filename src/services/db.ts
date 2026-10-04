@@ -1441,25 +1441,43 @@ class DatabaseManager {
     billId: string;
     studentId: string;
     amount: number;
-    paymentDate: string;
+    paymentDate?: string;
     notes?: string;
-    actorProfile: UserProfile;
+    actorProfile?: UserProfile | null;
   }): Payment {
     const bill = this.getBillById(params.billId);
     const student = this.getProfileById(params.studentId);
+    const actor = params.actorProfile || this.getProfiles().find(p => p.role === 'admin' || p.role === 'treasurer') || {
+      id: 'p0000000-0000-0000-0000-000000000002',
+      full_name: 'Bendahara Kas',
+      role: 'treasurer' as const
+    };
+
+    // Ensure student assignment exists for this bill
+    const existingAssignment = this.state.bill_assignments.find(
+      a => a.bill_id === params.billId && a.student_id === params.studentId
+    );
+    if (!existingAssignment) {
+      this.state.bill_assignments.push({
+        id: `asg_${params.billId.slice(-4)}_${params.studentId.slice(-4)}_${Date.now()}`,
+        bill_id: params.billId,
+        student_id: params.studentId,
+        created_at: new Date().toISOString()
+      });
+    }
 
     const newPayment: Payment = {
       id: `m_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
       bill_id: params.billId,
       student_id: params.studentId,
-      amount: params.amount,
+      amount: Number(params.amount),
       payment_method: 'cash',
       payment_date: params.paymentDate || new Date().toISOString().split('T')[0],
       status: 'verified', // DIRECT VERIFIED
-      student_note: 'Pembayaran tunai langsung',
+      student_note: 'Pembayaran tunai langsung ke bendahara',
       admin_note: params.notes || 'Diterima tunai oleh bendahara',
-      received_by: params.actorProfile.id,
-      verified_by: params.actorProfile.id,
+      received_by: actor.id,
+      verified_by: actor.id,
       verified_at: new Date().toISOString(),
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
@@ -1471,19 +1489,19 @@ class DatabaseManager {
     this.createNotification({
       user_id: params.studentId,
       title: 'Pembayaran Cash Diterima',
-      message: `Pembayaran cash sebesar Rp${params.amount.toLocaleString('id-ID')} untuk "${bill?.name}" telah diterima dan diverifikasi oleh bendahara.`,
+      message: `Pembayaran cash sebesar Rp${Number(params.amount).toLocaleString('id-ID')} untuk "${bill?.name || 'Tagihan Kas'}" telah diterima dan diverifikasi oleh bendahara.`,
       type: 'success'
     });
 
     this.recordAuditLog({
-      user_id: params.actorProfile.id,
-      user_name: params.actorProfile.full_name,
-      user_role: params.actorProfile.role,
+      user_id: actor.id,
+      user_name: actor.full_name,
+      user_role: actor.role,
       action: 'RECORD_CASH_PAYMENT',
       entity_type: 'payments',
       entity_id: newPayment.id,
       new_data: newPayment,
-      description: `Menerima pembayaran cash Rp${params.amount.toLocaleString('id-ID')} untuk "${bill?.name}" dari ${student?.full_name} (${student?.nim})`
+      description: `Menerima pembayaran cash Rp${Number(params.amount).toLocaleString('id-ID')} untuk "${bill?.name || 'Tagihan Kas'}" dari ${student?.full_name || 'Mahasiswa'} (${student?.nim || '-'})`
     });
 
     this.notify();
