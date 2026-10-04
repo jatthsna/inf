@@ -3,17 +3,18 @@ import { useAuth } from '../../context/AuthContext';
 import { db } from '../../services/db';
 import { AcademicYear, IncomeTransaction } from '../../types';
 import { Modal } from '../../components/common/Modal';
+import { ConfirmModal } from '../../components/common/ConfirmModal';
 import { EmptyState } from '../../components/common/EmptyState';
 import { formatCurrency, formatDateID } from '../../utils/formatters';
 import { OTHER_INCOME_CATEGORIES } from '../../lib/constants';
 import { 
   ArrowUpRight, 
   Plus, 
-  Search, 
   DollarSign, 
-  Calendar, 
   FileText, 
-  Tag 
+  Tag,
+  Pencil,
+  Trash2
 } from 'lucide-react';
 
 interface IncomePageProps {
@@ -24,6 +25,8 @@ export const IncomePage: React.FC<IncomePageProps> = ({ activeAcademicYear }) =>
   const { currentUser } = useAuth();
   const [incomes, setIncomes] = useState<IncomeTransaction[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingIncome, setEditingIncome] = useState<IncomeTransaction | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<IncomeTransaction | null>(null);
   const [sourceName, setSourceName] = useState('');
   const [category, setCategory] = useState<any>('Donasi');
   const [amount, setAmount] = useState<number>(100000);
@@ -42,6 +45,28 @@ export const IncomePage: React.FC<IncomePageProps> = ({ activeAcademicYear }) =>
 
   const totalOtherIncome = incomes.reduce((sum, i) => sum + i.amount, 0);
 
+  const handleOpenAdd = () => {
+    setEditingIncome(null);
+    setSourceName('');
+    setCategory('Donasi');
+    setAmount(100000);
+    setReceivedDate(new Date().toISOString().split('T')[0]);
+    setNotes('');
+    setError(null);
+    setIsModalOpen(true);
+  };
+
+  const handleOpenEdit = (item: IncomeTransaction) => {
+    setEditingIncome(item);
+    setSourceName(item.source_name);
+    setCategory(item.category);
+    setAmount(item.amount);
+    setReceivedDate(item.received_date);
+    setNotes(item.notes || '');
+    setError(null);
+    setIsModalOpen(true);
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!sourceName.trim() || amount <= 0) {
@@ -50,23 +75,38 @@ export const IncomePage: React.FC<IncomePageProps> = ({ activeAcademicYear }) =>
     }
 
     try {
-      db.createOtherIncome({
-        academic_year_id: activeAcademicYear.id,
-        source_name: sourceName.trim(),
-        category,
-        amount: Number(amount),
-        received_date: receivedDate,
-        notes: notes.trim()
-      }, currentUser);
+      if (editingIncome) {
+        db.updateOtherIncome(editingIncome.id, {
+          source_name: sourceName.trim(),
+          category,
+          amount: Number(amount),
+          received_date: receivedDate,
+          notes: notes.trim()
+        }, currentUser);
+      } else {
+        db.createOtherIncome({
+          academic_year_id: activeAcademicYear.id,
+          source_name: sourceName.trim(),
+          category,
+          amount: Number(amount),
+          received_date: receivedDate,
+          notes: notes.trim()
+        }, currentUser);
+      }
 
       setIsModalOpen(false);
-      setSourceName('');
-      setAmount(100000);
-      setNotes('');
+      setEditingIncome(null);
       reloadData();
     } catch (err: any) {
-      setError(err.message || 'Gagal mencatat pemasukan.');
+      setError(err.message || 'Gagal menyimpan pemasukan.');
     }
+  };
+
+  const handleDelete = () => {
+    if (!deleteTarget) return;
+    db.deleteOtherIncome(deleteTarget.id, currentUser);
+    setDeleteTarget(null);
+    reloadData();
   };
 
   return (
@@ -81,15 +121,12 @@ export const IncomePage: React.FC<IncomePageProps> = ({ activeAcademicYear }) =>
             </span>
           </div>
           <p className="text-xs text-slate-400 mt-0.5">
-            Catat dana masuk di luar tagihan mahasiswa seperti donasi alumni, sponsorship, atau dana usaha
+            Catat dan kelola dana masuk di luar tagihan mahasiswa seperti donasi alumni, sponsorship, atau dana usaha
           </p>
         </div>
 
         <button
-          onClick={() => {
-            setError(null);
-            setIsModalOpen(true);
-          }}
+          onClick={handleOpenAdd}
           className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-cyan-400 to-blue-500 hover:from-cyan-300 hover:to-blue-400 text-slate-950 font-bold text-xs shadow-[0_0_15px_rgba(34,211,238,0.3)] transition-all self-start sm:self-auto"
         >
           <Plus className="w-4 h-4" />
@@ -104,7 +141,7 @@ export const IncomePage: React.FC<IncomePageProps> = ({ activeAcademicYear }) =>
           title="Belum Ada Pemasukan Lain"
           description="Pemasukan dari luar tagihan mahasiswa (seperti donasi atau sponsor) akan tercatat di sini."
           actionLabel="Catat Pemasukan"
-          onAction={() => setIsModalOpen(true)}
+          onAction={handleOpenAdd}
         />
       ) : (
         <div className="rounded-2xl bg-[#151F32] border border-[#26354D] overflow-hidden">
@@ -117,6 +154,7 @@ export const IncomePage: React.FC<IncomePageProps> = ({ activeAcademicYear }) =>
                   <th className="py-3 px-4">Sumber Pemasukan</th>
                   <th className="py-3 px-4">Keterangan</th>
                   <th className="py-3 px-4 text-right">Nominal</th>
+                  <th className="py-3 px-4 text-center">Aksi</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#26354D]/60 text-slate-300">
@@ -139,6 +177,24 @@ export const IncomePage: React.FC<IncomePageProps> = ({ activeAcademicYear }) =>
                     <td className="py-3.5 px-4 text-right font-mono font-bold text-emerald-400 whitespace-nowrap">
                       +{formatCurrency(item.amount)}
                     </td>
+                    <td className="py-3.5 px-4 text-center whitespace-nowrap">
+                      <div className="inline-flex items-center gap-1">
+                        <button
+                          onClick={() => handleOpenEdit(item)}
+                          className="p-1.5 text-slate-400 hover:text-cyan-400 hover:bg-[#1B263B] rounded-lg transition-colors"
+                          title="Edit Pemasukan"
+                        >
+                          <Pencil className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={() => setDeleteTarget(item)}
+                          className="p-1.5 text-slate-400 hover:text-rose-400 hover:bg-[#1B263B] rounded-lg transition-colors"
+                          title="Hapus Pemasukan"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -147,12 +203,15 @@ export const IncomePage: React.FC<IncomePageProps> = ({ activeAcademicYear }) =>
         </div>
       )}
 
-      {/* Modal */}
+      {/* Modal Add / Edit */}
       <Modal
         isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        title="Catat Pemasukan Kas Lain"
-        subtitle="Dana akan langsung ditambahkan ke Saldo Kas program studi"
+        onClose={() => {
+          setIsModalOpen(false);
+          setEditingIncome(null);
+        }}
+        title={editingIncome ? 'Edit Pemasukan Kas Non-Tagihan' : 'Catat Pemasukan Kas Lain'}
+        subtitle="Dana akan langsung disesuaikan pada Saldo Kas program studi"
         maxWidth="md"
       >
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -164,55 +223,64 @@ export const IncomePage: React.FC<IncomePageProps> = ({ activeAcademicYear }) =>
 
           <div>
             <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">
-              Sumber Pemasukan *
+              Sumber / Pemberi Dana *
             </label>
-            <input
-              type="text"
-              placeholder="Contoh: Donasi Alumni 2020 / Sponsor Hackathon"
-              value={sourceName}
-              onChange={(e) => setSourceName(e.target.value)}
-              className="w-full px-3.5 py-2.5 bg-[#0B1120] border border-[#26354D] rounded-xl text-xs text-white focus:outline-none focus:border-cyan-500"
-              required
-            />
+            <div className="relative">
+              <FileText className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+              <input
+                type="text"
+                placeholder="Contoh: Donasi Alumni IF-20, Sponsor PT ABC, Dana Bazar"
+                value={sourceName}
+                onChange={(e) => setSourceName(e.target.value)}
+                className="w-full pl-10 pr-3.5 py-2.5 bg-[#0B1120] border border-[#26354D] rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500"
+                required
+              />
+            </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">
-                Kategori
+                Kategori Pemasukan
               </label>
-              <select
-                value={category}
-                onChange={(e) => setCategory(e.target.value as any)}
-                className="w-full px-3.5 py-2.5 bg-[#0B1120] border border-[#26354D] rounded-xl text-xs text-white focus:outline-none focus:border-cyan-500"
-              >
-                {OTHER_INCOME_CATEGORIES.map((cat) => (
-                  <option key={cat} value={cat}>
-                    {cat}
-                  </option>
-                ))}
-              </select>
+              <div className="relative">
+                <Tag className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+                <select
+                  value={category}
+                  onChange={(e) => setCategory(e.target.value as any)}
+                  className="w-full pl-10 pr-3.5 py-2.5 bg-[#0B1120] border border-[#26354D] rounded-xl text-xs text-white focus:outline-none focus:border-cyan-500 appearance-none"
+                >
+                  {OTHER_INCOME_CATEGORIES.map((cat) => (
+                    <option key={cat} value={cat}>
+                      {cat}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
 
             <div>
               <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">
                 Nominal (Rp) *
               </label>
-              <input
-                type="number"
-                min="1000"
-                step="1000"
-                value={amount}
-                onChange={(e) => setAmount(Number(e.target.value))}
-                className="w-full px-3.5 py-2.5 bg-[#0B1120] border border-[#26354D] rounded-xl text-xs text-white font-mono font-bold focus:outline-none focus:border-cyan-500"
-                required
-              />
+              <div className="relative">
+                <DollarSign className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+                <input
+                  type="number"
+                  min="1000"
+                  step="1000"
+                  value={amount}
+                  onChange={(e) => setAmount(Number(e.target.value))}
+                  className="w-full pl-10 pr-3.5 py-2.5 bg-[#0B1120] border border-[#26354D] rounded-xl text-xs text-white font-mono focus:outline-none focus:border-cyan-500"
+                  required
+                />
+              </div>
             </div>
           </div>
 
           <div>
             <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">
-              Tanggal Penerimaan
+              Tanggal Penerimaan *
             </label>
             <input
               type="date"
@@ -239,7 +307,10 @@ export const IncomePage: React.FC<IncomePageProps> = ({ activeAcademicYear }) =>
           <div className="flex items-center justify-end gap-3 pt-3 border-t border-[#26354D]">
             <button
               type="button"
-              onClick={() => setIsModalOpen(false)}
+              onClick={() => {
+                setIsModalOpen(false);
+                setEditingIncome(null);
+              }}
               className="px-4 py-2 text-xs font-medium text-slate-400 hover:text-white"
             >
               Batal
@@ -248,11 +319,22 @@ export const IncomePage: React.FC<IncomePageProps> = ({ activeAcademicYear }) =>
               type="submit"
               className="px-5 py-2.5 text-xs font-bold text-slate-950 bg-gradient-to-r from-cyan-400 to-blue-500 hover:from-cyan-300 hover:to-blue-400 rounded-xl transition-all shadow-[0_0_15px_rgba(34,211,238,0.3)]"
             >
-              Simpan Pemasukan
+              {editingIncome ? 'Simpan Perubahan' : 'Simpan Pemasukan'}
             </button>
           </div>
         </form>
       </Modal>
+
+      {/* Delete Confirmation Modal */}
+      <ConfirmModal
+        isOpen={Boolean(deleteTarget)}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={handleDelete}
+        title="Hapus Catatan Pemasukan?"
+        message={`Apakah Anda yakin ingin menghapus pemasukan "${deleteTarget?.source_name}" sebesar ${formatCurrency(deleteTarget?.amount || 0)}? Saldo kas akan berkurang kembali secara otomatis.`}
+        variant="danger"
+        confirmLabel="Hapus Pemasukan"
+      />
     </div>
   );
 };

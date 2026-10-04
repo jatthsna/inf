@@ -4,6 +4,7 @@ import { db } from '../../services/db';
 import { AcademicYear, Payment, PaymentStatus } from '../../types';
 import { StatusBadge } from '../../components/common/StatusBadge';
 import { Modal } from '../../components/common/Modal';
+import { ConfirmModal } from '../../components/common/ConfirmModal';
 import { ReceiptModal } from '../../components/common/ReceiptModal';
 import { EmptyState } from '../../components/common/EmptyState';
 import { formatCurrency, formatDateID, formatDateTimeID } from '../../utils/formatters';
@@ -16,7 +17,8 @@ import {
   Clock, 
   ExternalLink,
   FileText,
-  Printer
+  Printer,
+  Trash2
 } from 'lucide-react';
 
 interface PaymentsPageProps {
@@ -35,6 +37,7 @@ export const PaymentsPage: React.FC<PaymentsPageProps> = ({ activeAcademicYear }
   const [selectedReceiptPayment, setSelectedReceiptPayment] = useState<Payment | null>(null);
   const [verifyingPayment, setVerifyingPayment] = useState<Payment | null>(null);
   const [rejectingPayment, setRejectingPayment] = useState<Payment | null>(null);
+  const [deletePaymentTarget, setDeletePaymentTarget] = useState<Payment | null>(null);
   const [adminNote, setAdminNote] = useState('');
   const [rejectReason, setRejectReason] = useState('Bukti transfer tidak valid atau nominal tidak sesuai.');
 
@@ -46,6 +49,13 @@ export const PaymentsPage: React.FC<PaymentsPageProps> = ({ activeAcademicYear }
     reloadData();
     return db.subscribe(reloadData);
   }, [activeAcademicYear.id]);
+
+  const handleDeletePayment = () => {
+    if (!deletePaymentTarget) return;
+    db.deletePayment(deletePaymentTarget.id, currentUser);
+    setDeletePaymentTarget(null);
+    reloadData();
+  };
 
   const filteredPayments = payments.filter((p) => {
     if (statusFilter !== 'all' && p.status !== statusFilter) return false;
@@ -230,39 +240,49 @@ export const PaymentsPage: React.FC<PaymentsPageProps> = ({ activeAcademicYear }
                         <StatusBadge status={p.status} size="sm" />
                       </td>
                       <td className="py-3.5 px-4 text-center whitespace-nowrap">
-                        {isPending ? (
-                          <div className="flex items-center justify-center gap-1.5">
+                        <div className="flex items-center justify-center gap-1.5">
+                          {isPending ? (
+                            <>
+                              <button
+                                onClick={() => {
+                                  setVerifyingPayment(p);
+                                  setAdminNote('Pembayaran diverifikasi valid');
+                                }}
+                                className="px-2.5 py-1 rounded-md bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs transition-colors flex items-center gap-1 shadow-sm"
+                                title="Verifikasi Sah"
+                              >
+                                <CheckCircle2 className="w-3.5 h-3.5" />
+                                <span>Verifikasi</span>
+                              </button>
+                              <button
+                                onClick={() => setRejectingPayment(p)}
+                                className="px-2 py-1 rounded-md bg-slate-800 hover:bg-slate-700 text-rose-400 border border-slate-700 font-medium text-xs transition-colors"
+                                title="Tolak Bukti"
+                              >
+                                <XCircle className="w-3.5 h-3.5" />
+                                <span>Tolak</span>
+                              </button>
+                            </>
+                          ) : isVerified ? (
                             <button
-                              onClick={() => {
-                                setVerifyingPayment(p);
-                                setAdminNote('Pembayaran diverifikasi valid');
-                              }}
-                              className="px-2.5 py-1 rounded-md bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs transition-colors flex items-center gap-1 shadow-sm"
-                              title="Verifikasi Sah"
+                              onClick={() => setSelectedReceiptPayment(p)}
+                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 border border-blue-500/30 text-xs font-semibold transition-colors shadow-sm"
                             >
-                              <CheckCircle2 className="w-3.5 h-3.5" />
-                              <span>Verifikasi</span>
+                              <Printer className="w-3.5 h-3.5" />
+                              <span>Kuitansi</span>
                             </button>
-                            <button
-                              onClick={() => setRejectingPayment(p)}
-                              className="px-2 py-1 rounded-md bg-slate-800 hover:bg-slate-700 text-rose-400 border border-slate-700 font-medium text-xs transition-colors"
-                              title="Tolak Bukti"
-                            >
-                              <XCircle className="w-3.5 h-3.5" />
-                              <span>Tolak</span>
-                            </button>
-                          </div>
-                        ) : isVerified ? (
+                          ) : (
+                            <span className="text-xs text-rose-400 font-medium">Ditolak</span>
+                          )}
+
                           <button
-                            onClick={() => setSelectedReceiptPayment(p)}
-                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 border border-blue-500/30 text-xs font-semibold transition-colors shadow-sm"
+                            onClick={() => setDeletePaymentTarget(p)}
+                            className="p-1 text-slate-400 hover:text-rose-400 hover:bg-slate-800 rounded transition-colors"
+                            title="Hapus Transaksi"
                           >
-                            <Printer className="w-3.5 h-3.5" />
-                            <span>Kuitansi</span>
+                            <Trash2 className="w-3.5 h-3.5" />
                           </button>
-                        ) : (
-                          <span className="text-xs text-rose-400 font-medium">Ditolak</span>
-                        )}
+                        </div>
                       </td>
                     </tr>
                   );
@@ -458,6 +478,17 @@ export const PaymentsPage: React.FC<PaymentsPageProps> = ({ activeAcademicYear }
           student={selectedReceiptPayment.student}
         />
       )}
+
+      {/* Delete Payment Confirm Modal */}
+      <ConfirmModal
+        isOpen={Boolean(deletePaymentTarget)}
+        onClose={() => setDeletePaymentTarget(null)}
+        onConfirm={handleDeletePayment}
+        title="Hapus Transaksi Pembayaran?"
+        message={`Apakah Anda yakin ingin menghapus data pembayaran ${deletePaymentTarget?.student?.full_name || 'mahasiswa'} (${formatCurrency(deletePaymentTarget?.amount || 0)})? Status tagihan kas akan kembali menjadi Belum Lunas.`}
+        variant="danger"
+        confirmLabel="Hapus Transaksi"
+      />
     </div>
   );
 };

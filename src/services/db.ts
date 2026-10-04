@@ -184,6 +184,8 @@ class DatabaseManager {
           this.saveToStorage(this.state);
           this.isSyncingFromCloud = false;
           this.listeners.forEach(fn => fn());
+        } else {
+          this.pushStateToCloud();
         }
       } else if (!data) {
         // First-time sync push
@@ -1741,6 +1743,56 @@ class DatabaseManager {
 
     this.notify();
     return newIncome;
+  }
+
+  public deleteOtherIncome(id: string, actorProfile?: UserProfile): void {
+    const item = this.state.income_transactions.find(i => i.id === id);
+    if (!item) return;
+
+    this.state.income_transactions = this.state.income_transactions.filter(i => i.id !== id);
+
+    this.recordAuditLog({
+      user_id: actorProfile?.id,
+      user_name: actorProfile?.full_name,
+      user_role: actorProfile?.role,
+      action: 'DELETE_OTHER_INCOME',
+      entity_type: 'income_transactions',
+      entity_id: id,
+      old_data: item,
+      description: `Menghapus pemasukan non-tagihan: "${item.source_name}" sebesar Rp${item.amount.toLocaleString('id-ID')}`
+    });
+
+    this.notify();
+  }
+
+  public updateOtherIncome(id: string, updates: Partial<IncomeTransaction>, actorProfile?: UserProfile): IncomeTransaction | null {
+    const idx = this.state.income_transactions.findIndex(i => i.id === id);
+    if (idx === -1) return null;
+
+    const oldItem = this.state.income_transactions[idx];
+    const updatedItem: IncomeTransaction = {
+      ...oldItem,
+      ...updates,
+      id: oldItem.id,
+      amount: updates.amount !== undefined ? Number(updates.amount) : oldItem.amount
+    };
+
+    this.state.income_transactions[idx] = updatedItem;
+
+    this.recordAuditLog({
+      user_id: actorProfile?.id,
+      user_name: actorProfile?.full_name,
+      user_role: actorProfile?.role,
+      action: 'UPDATE_OTHER_INCOME',
+      entity_type: 'income_transactions',
+      entity_id: id,
+      old_data: oldItem,
+      new_data: updatedItem,
+      description: `Memperbarui pemasukan non-tagihan: "${updatedItem.source_name}"`
+    });
+
+    this.notify();
+    return updatedItem;
   }
 
   // ----------------------------------------------------
