@@ -468,21 +468,30 @@ export const BillsPage: React.FC<BillsPageProps> = ({ activeAcademicYear }) => {
 
           {/* Payment Link Selection */}
           <div>
-            <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
-              <LinkIcon className="w-3.5 h-3.5 text-blue-400" />
-              Tautkan ke Lynk.id Payment Link
-            </label>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="text-xs font-semibold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+                <LinkIcon className="w-3.5 h-3.5 text-blue-400" />
+                Tautkan ke Lynk.id Payment Link
+              </label>
+              <span className="text-[11px] text-slate-400 font-normal">
+                (Bisa dikosongkan)
+              </span>
+            </div>
             <select
               value={paymentLinkId}
               onChange={(e) => setPaymentLinkId(e.target.value)}
               className="w-full px-3.5 py-2.5 bg-slate-900 border border-slate-800 rounded-lg text-xs text-white focus:outline-none focus:border-blue-500"
             >
+              <option value="">-- Tanpa Link Lynk.id (Manual / Bayar Tunai ke Bendahara) --</option>
               {paymentLinks.map((link) => (
                 <option key={link.id} value={link.id}>
                   {link.name} ({link.url})
                 </option>
               ))}
             </select>
+            <p className="text-[11px] text-slate-400 mt-1 leading-relaxed">
+              💡 Link <code className="text-cyan-400">https://lynk.id/kas-informatika</code> adalah link contoh bawaan. Jika Anda belum punya akun Lynk.id, pilih <b>"-- Tanpa Link Lynk.id --"</b>. Jika Anda sudah punya link sendiri, Anda bisa menggantinya di menu <b>Link Pembayaran</b> di sidebar.
+            </p>
           </div>
 
           {/* Target Distribution */}

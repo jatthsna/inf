@@ -658,37 +658,44 @@ export const StudentQuickPayPortal: React.FC<StudentQuickPayPortalProps> = ({ on
               {/* Sub-form Lynk.id vs Cash */}
               {paymentMethod === 'online' ? (
                 <div className="p-3.5 rounded-xl bg-[#090D16] border border-slate-800 space-y-3">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 p-3 rounded-lg bg-slate-900 border border-slate-800">
-                    <div className="space-y-0.5 min-w-0">
-                      <span className="text-[10px] text-slate-400 font-semibold block">
-                        Tautan Pembayaran:
-                      </span>
-                      <p className="font-mono text-xs text-emerald-400 truncate font-semibold">
-                        {currentBill?.payment_link_url || 'https://lynk.id/kas-informatika'}
-                      </p>
-                    </div>
+                  {currentBill?.payment_link_url ? (
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 p-3 rounded-lg bg-slate-900 border border-slate-800">
+                      <div className="space-y-0.5 min-w-0">
+                        <span className="text-[10px] text-slate-400 font-semibold block">
+                          Tautan Pembayaran Online / Lynk.id:
+                        </span>
+                        <p className="font-mono text-xs text-emerald-400 truncate font-semibold">
+                          {currentBill.payment_link_url}
+                        </p>
+                      </div>
 
-                    <div className="flex items-center gap-2 shrink-0">
-                      <button
-                        type="button"
-                        onClick={handleCopyLink}
-                        className="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium flex items-center gap-1 transition-colors"
-                      >
-                        {copiedLink ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-                        <span>{copiedLink ? 'Tersalin' : 'Salin'}</span>
-                      </button>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <button
+                          type="button"
+                          onClick={handleCopyLink}
+                          className="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium flex items-center gap-1 transition-colors"
+                        >
+                          {copiedLink ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                          <span>{copiedLink ? 'Tersalin' : 'Salin'}</span>
+                        </button>
 
-                      <a
-                        href={currentBill?.payment_link_url || 'https://lynk.id/kas-informatika'}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-1.5 transition-colors shadow-sm"
-                      >
-                        <span>Buka Lynk.id</span>
-                        <ExternalLink className="w-3.5 h-3.5" />
-                      </a>
+                        <a
+                          href={currentBill.payment_link_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-1.5 transition-colors shadow-sm"
+                        >
+                          <span>Buka Link Pembayaran</span>
+                          <ExternalLink className="w-3.5 h-3.5" />
+                        </a>
+                      </div>
                     </div>
-                  </div>
+                  ) : (
+                    <div className="p-3 rounded-lg bg-blue-500/10 border border-blue-500/20 text-xs text-blue-300 flex items-center gap-2">
+                      <CreditCard className="w-4 h-4 text-blue-400 shrink-0" />
+                      <span>Tagihan ini tidak ditautkan ke link online. Pembayaran dilakukan secara tunai langsung ke Bendahara Kelas atau transfer rekening.</span>
+                    </div>
+                  )}
 
                   <div className="space-y-2.5">
                     <div>

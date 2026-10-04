@@ -134,7 +134,7 @@ export const IncomePage: React.FC<IncomePageProps> = ({ activeAcademicYear }) =>
         </button>
       </div>
 
-      {/* Table */}
+      {/* Content: Mobile Cards + Desktop Table */}
       {incomes.length === 0 ? (
         <EmptyState
           icon={ArrowUpRight}
@@ -144,61 +144,108 @@ export const IncomePage: React.FC<IncomePageProps> = ({ activeAcademicYear }) =>
           onAction={handleOpenAdd}
         />
       ) : (
-        <div className="rounded-2xl bg-[#151F32] border border-[#26354D] overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead className="bg-[#1B263B] text-slate-400 font-semibold border-b border-[#26354D]">
-                <tr>
-                  <th className="py-3 px-4">Tanggal Terima</th>
-                  <th className="py-3 px-4">Kategori</th>
-                  <th className="py-3 px-4">Sumber Pemasukan</th>
-                  <th className="py-3 px-4">Keterangan</th>
-                  <th className="py-3 px-4 text-right">Nominal</th>
-                  <th className="py-3 px-4 text-center">Aksi</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[#26354D]/60 text-slate-300">
-                {incomes.map((item) => (
-                  <tr key={item.id} className="hover:bg-[#1B263B]/40 transition-colors">
-                    <td className="py-3.5 px-4 font-mono text-slate-400 whitespace-nowrap">
-                      {formatDateID(item.received_date)}
-                    </td>
-                    <td className="py-3.5 px-4">
-                      <span className="px-2.5 py-0.5 rounded-full bg-blue-500/10 text-blue-300 border border-blue-500/20 text-[10px] font-semibold">
-                        {item.category}
-                      </span>
-                    </td>
-                    <td className="py-3.5 px-4 font-bold text-white">
-                      {item.source_name}
-                    </td>
-                    <td className="py-3.5 px-4 text-slate-400">
-                      {item.notes || '-'}
-                    </td>
-                    <td className="py-3.5 px-4 text-right font-mono font-bold text-emerald-400 whitespace-nowrap">
+        <div className="space-y-4">
+          {/* Mobile Card List (tampilan HP langsung terlihat jelas tanpa scroll) */}
+          <div className="grid grid-cols-1 gap-3 md:hidden">
+            {incomes.map((item) => (
+              <div key={item.id} className="p-4 rounded-2xl bg-[#151F32] border border-[#26354D] space-y-3">
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <span className="px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-300 border border-blue-500/20 text-[10px] font-semibold">
+                      {item.category}
+                    </span>
+                    <h3 className="text-sm font-bold text-white mt-1.5">{item.source_name}</h3>
+                    <p className="text-[11px] text-slate-400 mt-0.5">{item.notes || 'Tanpa keterangan'}</p>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-sm font-bold font-mono text-emerald-400 block">
                       +{formatCurrency(item.amount)}
-                    </td>
-                    <td className="py-3.5 px-4 text-center whitespace-nowrap">
-                      <div className="inline-flex items-center gap-1">
-                        <button
-                          onClick={() => handleOpenEdit(item)}
-                          className="p-1.5 text-slate-400 hover:text-cyan-400 hover:bg-[#1B263B] rounded-lg transition-colors"
-                          title="Edit Pemasukan"
-                        >
-                          <Pencil className="w-3.5 h-3.5" />
-                        </button>
-                        <button
-                          onClick={() => setDeleteTarget(item)}
-                          className="p-1.5 text-slate-400 hover:text-rose-400 hover:bg-[#1B263B] rounded-lg transition-colors"
-                          title="Hapus Pemasukan"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    </td>
+                    </span>
+                    <span className="text-[10px] text-slate-500 font-mono">
+                      {formatDateID(item.received_date)}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="pt-2 border-t border-[#26354D]/60 flex items-center justify-end gap-2">
+                  <button
+                    onClick={() => handleOpenEdit(item)}
+                    className="flex-1 py-2 px-3 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors"
+                  >
+                    <Pencil className="w-3.5 h-3.5" />
+                    <span>Edit</span>
+                  </button>
+                  <button
+                    onClick={() => setDeleteTarget(item)}
+                    className="flex-1 py-2 px-3 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>Hapus</span>
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Desktop Table */}
+          <div className="hidden md:block rounded-2xl bg-[#151F32] border border-[#26354D] overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-[#1B263B] text-slate-400 font-semibold border-b border-[#26354D]">
+                  <tr>
+                    <th className="py-3 px-4">Tanggal Terima</th>
+                    <th className="py-3 px-4">Kategori</th>
+                    <th className="py-3 px-4">Sumber Pemasukan</th>
+                    <th className="py-3 px-4">Keterangan</th>
+                    <th className="py-3 px-4 text-right">Nominal</th>
+                    <th className="py-3 px-4 text-center">Aksi</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-[#26354D]/60 text-slate-300">
+                  {incomes.map((item) => (
+                    <tr key={item.id} className="hover:bg-[#1B263B]/40 transition-colors">
+                      <td className="py-3.5 px-4 font-mono text-slate-400 whitespace-nowrap">
+                        {formatDateID(item.received_date)}
+                      </td>
+                      <td className="py-3.5 px-4">
+                        <span className="px-2.5 py-0.5 rounded-full bg-blue-500/10 text-blue-300 border border-blue-500/20 text-[10px] font-semibold">
+                          {item.category}
+                        </span>
+                      </td>
+                      <td className="py-3.5 px-4 font-bold text-white">
+                        {item.source_name}
+                      </td>
+                      <td className="py-3.5 px-4 text-slate-400">
+                        {item.notes || '-'}
+                      </td>
+                      <td className="py-3.5 px-4 text-right font-mono font-bold text-emerald-400 whitespace-nowrap">
+                        +{formatCurrency(item.amount)}
+                      </td>
+                      <td className="py-3.5 px-4 text-center whitespace-nowrap">
+                        <div className="inline-flex items-center gap-1.5">
+                          <button
+                            onClick={() => handleOpenEdit(item)}
+                            className="px-2.5 py-1.5 rounded-lg bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 text-xs font-semibold flex items-center gap-1 transition-colors"
+                            title="Edit Pemasukan"
+                          >
+                            <Pencil className="w-3.5 h-3.5" />
+                            <span>Edit</span>
+                          </button>
+                          <button
+                            onClick={() => setDeleteTarget(item)}
+                            className="px-2.5 py-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 text-xs font-semibold flex items-center gap-1 transition-colors"
+                            title="Hapus Pemasukan"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                            <span>Hapus</span>
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       )}
