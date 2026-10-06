@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Modal } from '../../components/common/Modal';
 import { db } from '../../services/db';
 import { useAuth } from '../../context/AuthContext';
@@ -10,11 +10,17 @@ import {
   Send, 
   Copy, 
   Check, 
+  Key, 
+  Lock, 
+  Eye, 
+  EyeOff, 
   ExternalLink, 
   AlertCircle, 
   Code, 
   Zap,
-  Info
+  Info,
+  ShieldCheck,
+  Server
 } from 'lucide-react';
 
 interface LynkWebhookModalProps {
@@ -33,17 +39,24 @@ export const LynkWebhookModal: React.FC<LynkWebhookModalProps> = ({
   const activeYear = db.getActiveAcademicYear();
   const bills = db.getBills(activeYear.id).filter(b => b.is_active);
 
-  const [activeTab, setActiveTab] = useState<'simulator' | 'json' | 'guide'>('simulator');
+  const [settings, setSettings] = useState(() => db.getSettings());
+  const [merchantKey, setMerchantKey] = useState(settings.lynk_merchant_key || '');
+  const [showKey, setShowKey] = useState(false);
+  const [keySavedNotice, setKeySavedNotice] = useState(false);
+
+  const [activeTab, setActiveTab] = useState<'config' | 'simulator' | 'json' | 'guide'>('config');
   
   // Simulator State
   const [selectedStudentId, setSelectedStudentId] = useState(students[0]?.id || '');
   const [selectedBillId, setSelectedBillId] = useState(bills[0]?.id || '');
   const [testAmount, setTestAmount] = useState<number | ''>(bills[0]?.amount || 10000);
   const [copiedUrl, setCopiedUrl] = useState(false);
+  const [copiedKey, setCopiedKey] = useState(false);
 
   // Raw JSON State
   const defaultSampleJson = JSON.stringify({
     event: "transaction.success",
+    merchant_key: settings.lynk_merchant_key || "YOUR_MERCHANT_KEY_HERE",
     data: {
       transaction_id: `LNK-${Date.now().toString().slice(-6)}`,
       amount: bills[0]?.amount || 10000,
@@ -59,6 +72,32 @@ export const LynkWebhookModal: React.FC<LynkWebhookModalProps> = ({
   const [isProcessing, setIsProcessing] = useState(false);
   const [resultMessage, setResultMessage] = useState<{ ok: boolean; text: string } | null>(null);
 
+  useEffect(() => {
+    if (isOpen) {
+      const cur = db.getSettings();
+      setSettings(cur);
+      setMerchantKey(cur.lynk_merchant_key || '');
+    }
+  }, [isOpen]);
+
+  const handleSaveMerchantKey = (e: React.FormEvent) => {
+    e.preventDefault();
+    db.updateSettings({
+      lynk_merchant_key: merchantKey.trim()
+    }, currentUser);
+
+    setSettings(db.getSettings());
+    setKeySavedNotice(true);
+    setTimeout(() => setKeySavedNotice(false), 3000);
+  };
+
+  const handleCopyWebhookUrl = () => {
+    const url = "https://xolgtadrooyrbcgytneo.supabase.co/functions/v1/lynk-webhook";
+    navigator.clipboard.writeText(url);
+    setCopiedUrl(true);
+    setTimeout(() => setCopiedUrl(false), 2000);
+  };
+
   const handleRunSimulator = () => {
     const student = students.find(s => s.id === selectedStudentId);
     const bill = bills.find(b => b.id === selectedBillId);
@@ -69,6 +108,7 @@ export const LynkWebhookModal: React.FC<LynkWebhookModalProps> = ({
 
     const payload = {
       event: "transaction.success",
+      merchant_key: merchantKey.trim() || undefined,
       data: {
         transaction_id: `LNK-${Date.now().toString().slice(-6)}`,
         amount: Number(testAmount) || bill.amount,
@@ -76,6 +116,7 @@ export const LynkWebhookModal: React.FC<LynkWebhookModalProps> = ({
         customer_email: student.email,
         customer_phone: student.phone,
         product_name: bill.name,
+        merchant_key: merchantKey.trim() || undefined,
         status: "PAID",
         paid_at: new Date().toISOString()
       }
@@ -110,54 +151,69 @@ export const LynkWebhookModal: React.FC<LynkWebhookModalProps> = ({
     }
   };
 
+  const webhookEndpoint = "https://xolgtadrooyrbcgytneo.supabase.co/functions/v1/lynk-webhook";
+
   return (
     <Modal
       isOpen={isOpen}
       onClose={onClose}
       title="Integrasi & Webhook Lynk.id"
-      subtitle="Verifikasi otomatis pembayaran kas mahasiswa secara real-time via Webhook Lynk.id"
+      subtitle="Otomatisasi verifikasi pembayaran kas mahasiswa secara real-time via Webhook Lynk.id"
       maxWidth="lg"
     >
       <div className="space-y-5">
         {/* Navigation Tabs */}
-        <div className="grid grid-cols-3 gap-2 p-1 rounded-xl bg-slate-950 border border-slate-800">
+        <div className="grid grid-cols-4 gap-1.5 p-1 rounded-xl bg-slate-950 border border-slate-800 text-xs font-bold">
+          <button
+            type="button"
+            onClick={() => { setActiveTab('config'); setResultMessage(null); }}
+            className={`py-2 px-2.5 rounded-lg transition-all flex items-center justify-center gap-1.5 ${
+              activeTab === 'config'
+                ? 'bg-cyan-500 text-slate-950 shadow-sm'
+                : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <Key className="w-3.5 h-3.5" />
+            <span className="truncate">Merchant Key & URL</span>
+          </button>
+
           <button
             type="button"
             onClick={() => { setActiveTab('simulator'); setResultMessage(null); }}
-            className={`py-2 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+            className={`py-2 px-2.5 rounded-lg transition-all flex items-center justify-center gap-1.5 ${
               activeTab === 'simulator'
                 ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-slate-950 shadow-sm'
                 : 'text-slate-400 hover:text-white'
             }`}
           >
             <Zap className="w-3.5 h-3.5" />
-            <span>Simulasi Webhook</span>
+            <span className="truncate">Simulasi</span>
           </button>
 
           <button
             type="button"
             onClick={() => { setActiveTab('json'); setResultMessage(null); }}
-            className={`py-2 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+            className={`py-2 px-2.5 rounded-lg transition-all flex items-center justify-center gap-1.5 ${
               activeTab === 'json'
                 ? 'bg-blue-600 text-white shadow-sm'
                 : 'text-slate-400 hover:text-white'
             }`}
           >
             <Code className="w-3.5 h-3.5" />
-            <span>Paste JSON Payload</span>
+            <span className="truncate">Paste JSON</span>
           </button>
 
           <button
             type="button"
             onClick={() => { setActiveTab('guide'); setResultMessage(null); }}
-            className={`py-2 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+            className={`py-2 px-2.5 rounded-lg transition-all flex items-center justify-center gap-1.5 ${
               activeTab === 'guide'
                 ? 'bg-slate-800 text-white shadow-sm'
                 : 'text-slate-400 hover:text-white'
             }`}
           >
             <Info className="w-3.5 h-3.5" />
-            <span>Panduan Lynk.id</span>
+            <span className="truncate">Panduan</span>
           </button>
         </div>
 
@@ -180,7 +236,107 @@ export const LynkWebhookModal: React.FC<LynkWebhookModalProps> = ({
           </div>
         )}
 
-        {/* TAB 1: SIMULATOR */}
+        {/* TAB 1: MERCHANT KEY & URL SETTINGS */}
+        {activeTab === 'config' && (
+          <div className="space-y-4">
+            {/* Answer to user's question directly */}
+            <div className="p-4 rounded-xl bg-gradient-to-r from-blue-950/40 to-cyan-950/30 border border-cyan-500/30 text-xs space-y-2">
+              <div className="flex items-center gap-2 text-cyan-300 font-bold">
+                <ShieldCheck className="w-4 h-4 text-cyan-400" />
+                <span>Di Mana Menaruh "Merchant Key" Lynk.id Ini?</span>
+              </div>
+              <p className="text-slate-300 leading-relaxed text-[11px]">
+                <strong>Merchant Key</strong> adalah kunci rahasia keamanan yang diberikan oleh Lynk.id agar website Anda dapat memastikan bahwa sinyal webhook yang masuk 100% sah dan resmi dari server Lynk.id (bukan manipulasi pihak lain).
+              </p>
+              <ul className="list-disc pl-4 space-y-1 text-slate-300 text-[11px]">
+                <li><strong>Taruh di Form Ini (Bawah):</strong> Masukkan Merchant Key di kolom input di bawah lalu klik <strong>"Simpan Merchant Key"</strong>.</li>
+                <li><strong>Taruh di Akun Lynk.id:</strong> Di Lynk.id Anda, Merchant Key ini berada di menu <em>Settings &gt; Integrasi / Webhook</em>.</li>
+              </ul>
+            </div>
+
+            {/* Merchant Key Input Form */}
+            <form onSubmit={handleSaveMerchantKey} className="p-4 rounded-xl bg-slate-900 border border-slate-800 space-y-3">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-bold text-white flex items-center gap-1.5">
+                  <Key className="w-3.5 h-3.5 text-amber-400" />
+                  <span>Lynk.id Merchant Key / Secret Token</span>
+                </label>
+                {settings.lynk_merchant_key ? (
+                  <span className="inline-flex items-center gap-1 text-[10px] text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20 font-semibold">
+                    <Check className="w-3 h-3" />
+                    <span>Key Terpasang Aktif</span>
+                  </span>
+                ) : (
+                  <span className="text-[10px] text-amber-400 font-medium">Belum Diatur (Opsional)</span>
+                )}
+              </div>
+
+              <div className="relative">
+                <input
+                  type={showKey ? "text" : "password"}
+                  placeholder="Contoh: mk_live_xxxxxxxxxxxxxxxxxxxxxx"
+                  value={merchantKey}
+                  onChange={(e) => setMerchantKey(e.target.value)}
+                  className="w-full pl-3.5 pr-20 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white font-mono focus:outline-none focus:border-cyan-500"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowKey(!showKey)}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-slate-400 hover:text-white"
+                  title={showKey ? "Sembunyikan" : "Tampilkan"}
+                >
+                  {showKey ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                </button>
+              </div>
+
+              <div className="flex items-center justify-between pt-1">
+                <span className="text-[11px] text-slate-400">
+                  {keySavedNotice ? (
+                    <span className="text-emerald-400 font-bold">✓ Merchant Key berhasil disimpan ke database!</span>
+                  ) : (
+                    'Klik simpan setelah mengisi key'
+                  )}
+                </span>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs rounded-xl transition-colors shadow-sm"
+                >
+                  Simpan Merchant Key
+                </button>
+              </div>
+            </form>
+
+            {/* Webhook Endpoint Display */}
+            <div className="p-4 rounded-xl bg-slate-900 border border-slate-800 space-y-2">
+              <label className="text-xs font-bold text-white flex items-center gap-1.5">
+                <Server className="w-3.5 h-3.5 text-cyan-400" />
+                <span>URL Webhook untuk Ditempel di Lynk.id</span>
+              </label>
+              <p className="text-[11px] text-slate-400">
+                Salin URL ini dan tempelkan ke kolom <b>Webhook URL</b> di pengaturan Lynk.id:
+              </p>
+
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  readOnly
+                  value={webhookEndpoint}
+                  className="w-full px-3.5 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-cyan-300 font-mono select-all focus:outline-none"
+                />
+                <button
+                  type="button"
+                  onClick={handleCopyWebhookUrl}
+                  className="flex items-center gap-1 px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-bold shrink-0 transition-colors"
+                >
+                  {copiedUrl ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                  <span>{copiedUrl ? 'Tersalin' : 'Salin URL'}</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* TAB 2: SIMULATOR */}
         {activeTab === 'simulator' && (
           <div className="space-y-4">
             <div className="p-3.5 rounded-xl bg-slate-900 border border-slate-800 text-xs text-slate-300 space-y-1">
@@ -273,7 +429,7 @@ export const LynkWebhookModal: React.FC<LynkWebhookModalProps> = ({
           </div>
         )}
 
-        {/* TAB 2: RAW JSON */}
+        {/* TAB 3: RAW JSON */}
         {activeTab === 'json' && (
           <div className="space-y-4">
             <div className="flex items-center justify-between">
@@ -309,7 +465,7 @@ export const LynkWebhookModal: React.FC<LynkWebhookModalProps> = ({
           </div>
         )}
 
-        {/* TAB 3: PANDUAN PENGGUNAAN */}
+        {/* TAB 4: PANDUAN PENGGUNAAN */}
         {activeTab === 'guide' && (
           <div className="space-y-4 text-xs text-slate-300">
             <div className="p-4 rounded-xl bg-slate-900 border border-slate-800 space-y-3">
@@ -321,7 +477,7 @@ export const LynkWebhookModal: React.FC<LynkWebhookModalProps> = ({
                   <strong className="text-white">Mahasiswa Membayar di Lynk.id:</strong> Mahasiswa membuka link Lynk.id kelas Anda dan membayar via QRIS (GoPay/OVO/Dana/BCA/dll).
                 </li>
                 <li>
-                  <strong className="text-white">Lynk.id Mengirim Notifikasi Webhook:</strong> Server Lynk.id mengirimkan data transaksi (nama mahasiswa, nominal, status PAID).
+                  <strong className="text-white">Lynk.id Mengirim Notifikasi Webhook:</strong> Server Lynk.id mengirimkan data transaksi bersama <b>Merchant Key</b> untuk validasi keamanan.
                 </li>
                 <li>
                   <strong className="text-white">Pencocokan Cerdas Otomatis:</strong> Sistem kas mencocokkan nama mahasiswa dan tagihan yang sesuai.
@@ -335,7 +491,7 @@ export const LynkWebhookModal: React.FC<LynkWebhookModalProps> = ({
             <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-2">
               <p className="font-semibold text-white">Integrasi Webhook di Dashboard Lynk.id:</p>
               <p className="text-[11px] text-slate-400 leading-relaxed">
-                Karena website dideploy secara statis via GitHub Pages, untuk webhook 24/7 otomatis tanpa klik, Anda dapat menggunakan webhook relay gratis (seperti <b>Supabase Edge Functions</b> atau <b>Pipedream/Webhook.site</b>) yang terhubung langsung ke database Supabase kelas kita.
+                Di Lynk.id Anda, buka <b>Settings &gt; Integrasi / Webhook</b>. Masukkan URL: <code className="text-cyan-400 bg-slate-900 px-1 py-0.5 rounded">https://xolgtadrooyrbcgytneo.supabase.co/functions/v1/lynk-webhook</code> dan salin Merchant Key yang tertera ke tab <b>Merchant Key &amp; URL</b> di modal ini.
               </p>
             </div>
           </div>

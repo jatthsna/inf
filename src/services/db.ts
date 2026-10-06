@@ -130,6 +130,7 @@ function getInitialSeedData(): AppDatabaseState {
     contact_person_name: 'Bendahara Kas',
     contact_person_phone: '081298765432',
     lynk_default_url: 'https://lynk.id/kas-informatika',
+    lynk_merchant_key: '',
     auto_verify_online: true,
     app_logo_url: 'logo.png',
     enable_email_notifications: true,
@@ -1549,6 +1550,13 @@ class DatabaseManager {
     }
 
     const data = payload.data || payload;
+    const configuredKey = this.state.app_settings.lynk_merchant_key?.trim();
+    const incomingKey = (payload.merchant_key || data.merchant_key || payload.secret || data.secret || '').trim();
+
+    if (configuredKey && incomingKey && configuredKey !== incomingKey) {
+      return { success: false, message: 'Merchant key tidak cocok. Webhook ditolak demi keamanan.' };
+    }
+
     const rawAmount = data.amount || data.total || data.gross_amount || payload.amount || 0;
     const amount = Number(rawAmount);
     const customerName = (data.customer_name || data.name || data.buyer_name || payload.customer_name || '').trim();
