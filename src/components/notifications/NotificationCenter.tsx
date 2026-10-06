@@ -21,15 +21,19 @@ export const NotificationCenter: React.FC = () => {
     return db.subscribe(updateNotifs);
   }, [currentUser.id, role]);
 
-  // Click outside to close
+  // Click / touch outside to close
   useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
+    const handleClose = (e: Event) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
         setIsOpen(false);
       }
     };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener('mousedown', handleClose);
+    document.addEventListener('touchstart', handleClose, { passive: true });
+    return () => {
+      document.removeEventListener('mousedown', handleClose);
+      document.removeEventListener('touchstart', handleClose);
+    };
   }, []);
 
   // Auto-close after 6 seconds if left idle
@@ -84,7 +88,14 @@ export const NotificationCenter: React.FC = () => {
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-80 sm:w-96 rounded-2xl bg-[#151F32] border border-[#26354D] shadow-2xl py-3 z-50 animate-in fade-in zoom-in-95 duration-150">
+        <>
+          {/* Fullscreen touch/click backdrop to dismiss on any screen tap */}
+          <div
+            className="fixed inset-0 z-40 bg-black/30 backdrop-blur-[2px] transition-opacity"
+            onClick={() => setIsOpen(false)}
+            onTouchStart={() => setIsOpen(false)}
+          />
+          <div className="absolute right-0 mt-2 w-80 sm:w-96 rounded-2xl bg-[#151F32] border border-[#26354D] shadow-2xl py-3 z-50 animate-in fade-in zoom-in-95 duration-150">
           {/* Header */}
           <div className="flex items-center justify-between px-4 pb-3 border-b border-[#26354D]">
             <div className="flex items-center gap-2">
@@ -166,6 +177,7 @@ export const NotificationCenter: React.FC = () => {
             </button>
           </div>
         </div>
+        </>
       )}
     </div>
   );

@@ -43,7 +43,7 @@ export const BillsPage: React.FC<BillsPageProps> = ({ activeAcademicYear }) => {
   const [billName, setBillName] = useState('');
   const [description, setDescription] = useState('');
   const [billType, setBillType] = useState<BillType>('monthly');
-  const [amount, setAmount] = useState<number>(10000);
+  const [amount, setAmount] = useState<number | ''>(10000);
   const [periodMonth, setPeriodMonth] = useState<number>(new Date().getMonth() + 1);
   const [periodYear, setPeriodYear] = useState<number>(new Date().getFullYear());
   const [dueDate, setDueDate] = useState<string>(() => {
@@ -100,7 +100,7 @@ export const BillsPage: React.FC<BillsPageProps> = ({ activeAcademicYear }) => {
       setError('Nama tagihan wajib diisi.');
       return;
     }
-    if (amount <= 0) {
+    if (!amount || Number(amount) <= 0) {
       setError('Nominal harus lebih dari 0.');
       return;
     }
@@ -426,8 +426,21 @@ export const BillsPage: React.FC<BillsPageProps> = ({ activeAcademicYear }) => {
                 type="number"
                 min="1000"
                 step="500"
+                placeholder="Masukkan nominal tagihan..."
                 value={amount}
-                onChange={(e) => setAmount(Number(e.target.value))}
+                onFocus={(e) => {
+                  if (amount === 0) setAmount('');
+                  e.target.select();
+                }}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  if (val === '') {
+                    setAmount('');
+                  } else {
+                    const num = parseInt(val, 10);
+                    setAmount(isNaN(num) ? '' : num);
+                  }
+                }}
                 className="w-full px-3.5 py-2.5 bg-slate-900 border border-slate-800 rounded-lg text-xs text-white font-mono font-bold focus:outline-none focus:border-blue-500"
                 required
               />

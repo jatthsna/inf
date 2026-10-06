@@ -42,7 +42,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onNavigateTab }) => 
   const [departmentName, setDepartmentName] = useState(settings.department_name);
   const [className, setClassName] = useState(settings.class_name);
   const [korlasName, setKorlasName] = useState(settings.korlas_name || 'Adam Satrol');
-  const [defaultAmount, setDefaultAmount] = useState(settings.default_monthly_amount);
+  const [defaultAmount, setDefaultAmount] = useState<number | ''>(settings.default_monthly_amount);
   const [contactName, setContactName] = useState(settings.contact_person_name);
   const [contactPhone, setContactPhone] = useState(settings.contact_person_phone);
   const [defaultLynkUrl, setDefaultLynkUrl] = useState(settings.lynk_default_url);
@@ -335,8 +335,21 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onNavigateTab }) => 
               type="number"
               min="1000"
               step="500"
+              placeholder="Masukkan nominal..."
               value={defaultAmount}
-              onChange={(e) => setDefaultAmount(Number(e.target.value))}
+              onFocus={(e) => {
+                if (defaultAmount === 0) setDefaultAmount('');
+                e.target.select();
+              }}
+              onChange={(e) => {
+                const val = e.target.value;
+                if (val === '') {
+                  setDefaultAmount('');
+                } else {
+                  const num = parseInt(val, 10);
+                  setDefaultAmount(isNaN(num) ? '' : num);
+                }
+              }}
               className="w-full px-3.5 py-2 bg-slate-950 border border-slate-800 rounded-lg text-xs text-white font-mono font-bold focus:outline-none focus:border-blue-500"
               required
             />

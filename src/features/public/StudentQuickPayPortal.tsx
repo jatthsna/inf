@@ -213,7 +213,7 @@ export const StudentQuickPayPortal: React.FC<StudentQuickPayPortalProps> = ({ on
       try {
         if (paymentMethod === 'online') {
           const proof = proofFile || proofReference.trim() || 'Pembayaran melalui Lynk.id';
-          db.submitOnlinePayment({
+          const newPay = db.submitOnlinePayment({
             billId: currentBill.id,
             studentId: effectiveStudentId,
             amount: currentBill.amount,
@@ -221,9 +221,15 @@ export const StudentQuickPayPortal: React.FC<StudentQuickPayPortalProps> = ({ on
             studentNote: studentNote.trim() || `Bukti bayar Lynk.id: ${proofReference || 'Terkonfirmasi'}`
           });
 
-          setSuccessMessage(
-            `Alhamdulillah! Konfirmasi bayar Lynk.id untuk "${currentBill.name}" (${formatCurrency(currentBill.amount)}) berhasil dicatat. Bendahara akan segera memverifikasi.`
-          );
+          if (newPay.status === 'verified') {
+            setSuccessMessage(
+              `Alhamdulillah! Pembayaran Lynk.id untuk "${currentBill.name}" (${formatCurrency(currentBill.amount)}) BERHASIL & OTOMATIS LUNAS! Kuitansi sah siap dicetak.`
+            );
+          } else {
+            setSuccessMessage(
+              `Konfirmasi bayar Lynk.id untuk "${currentBill.name}" (${formatCurrency(currentBill.amount)}) berhasil dicatat.`
+            );
+          }
         } else {
           db.submitCashPaymentReport({
             billId: currentBill.id,

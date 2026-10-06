@@ -36,7 +36,7 @@ export const AcademicYearsPage: React.FC<AcademicYearsPageProps> = ({
   const [yearName, setYearName] = useState('2027/2028');
   const [startDate, setStartDate] = useState('2027-09-01');
   const [endDate, setEndDate] = useState('2028-08-31');
-  const [initialBalance, setInitialBalance] = useState<number>(0);
+  const [initialBalance, setInitialBalance] = useState<number | ''>(0);
   const [notes, setNotes] = useState('');
   const [error, setError] = useState<string | null>(null);
 
@@ -296,8 +296,20 @@ export const AcademicYearsPage: React.FC<AcademicYearsPageProps> = ({
               type="number"
               min="0"
               step="5000"
+              placeholder="0"
               value={initialBalance}
-              onChange={(e) => setInitialBalance(Number(e.target.value))}
+              onFocus={(e) => {
+                if (initialBalance === 0) setInitialBalance('');
+                e.target.select();
+              }}
+              onChange={(e) => {
+                const val = e.target.value;
+                if (val === '') setInitialBalance('');
+                else {
+                  const num = parseInt(val, 10);
+                  setInitialBalance(isNaN(num) ? '' : num);
+                }
+              }}
               className="w-full px-3.5 py-2.5 bg-[#0B1120] border border-[#26354D] rounded-xl text-xs text-white font-mono font-bold focus:outline-none focus:border-cyan-500"
             />
             <p className="text-[11px] text-slate-500 mt-1">
@@ -353,8 +365,20 @@ export const AcademicYearsPage: React.FC<AcademicYearsPageProps> = ({
                 type="number"
                 min="0"
                 step="5000"
+                placeholder="0"
                 value={initialBalance}
-                onChange={(e) => setInitialBalance(Number(e.target.value))}
+                onFocus={(e) => {
+                  if (initialBalance === 0) setInitialBalance('');
+                  e.target.select();
+                }}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  if (val === '') setInitialBalance('');
+                  else {
+                    const num = parseInt(val, 10);
+                    setInitialBalance(isNaN(num) ? '' : num);
+                  }
+                }}
                 className="w-full px-3.5 py-2.5 bg-[#0B1120] border border-[#26354D] rounded-xl text-xs text-white font-mono font-bold focus:outline-none focus:border-cyan-500"
                 required
               />

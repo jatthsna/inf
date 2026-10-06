@@ -7,6 +7,7 @@ import {
   Bill,
   BillAssignment,
   Payment,
+  PaymentStatus,
   PaymentLink,
   Expense,
   IncomeTransaction,
@@ -129,6 +130,7 @@ function getInitialSeedData(): AppDatabaseState {
     contact_person_name: 'Bendahara Kas',
     contact_person_phone: '081298765432',
     lynk_default_url: 'https://lynk.id/kas-informatika',
+    auto_verify_online: true,
     app_logo_url: 'logo.png',
     enable_email_notifications: true,
     updated_at: new Date().toISOString()
@@ -1398,6 +1400,9 @@ class DatabaseManager {
     const bill = this.getBillById(params.billId);
     const student = this.getProfileById(params.studentId);
 
+    const isAutoVerify = this.state.app_settings.auto_verify_online !== false;
+    const status: PaymentStatus = isAutoVerify ? 'verified' : 'pending';
+
     const newPayment: Payment = {
       id: `m_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
       bill_id: params.billId,
@@ -1406,31 +1411,53 @@ class DatabaseManager {
       payment_method: 'online',
       payment_date: new Date().toISOString().split('T')[0],
       proof_url: params.proofUrl,
-      status: 'pending', // PENDING verification
+      status: status,
       student_note: params.studentNote || 'Pembayaran via Lynk.id',
+      admin_note: isAutoVerify ? 'Diverifikasi otomatis 100% via Lynk.id Online' : undefined,
+      verified_at: isAutoVerify ? new Date().toISOString() : undefined,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     };
 
     this.state.payments.unshift(newPayment);
 
-    // Notify Admins & Treasurers
-    this.createNotification({
-      target_role: 'admin',
-      title: 'Pembayaran Menunggu Verifikasi',
-      message: `${student?.full_name || 'Mahasiswa'} telah mengunggah bukti Lynk.id untuk "${bill?.name || 'Tagihan'}". Silakan periksa di antrean verifikasi.`,
-      type: 'warning'
-    });
+    if (isAutoVerify) {
+      // Notify Student
+      this.createNotification({
+        user_id: params.studentId,
+        title: 'Pembayaran Kas Otomatis Lunas',
+        message: `Pembayaran Lynk.id sebesar Rp${params.amount.toLocaleString('id-ID')} untuk "${bill?.name}" telah diverifikasi OTOMATIS LUNAS. Kuitansi sah siap diunduh.`,
+        type: 'success'
+      });
+
+      // Notify Admin
+      this.createNotification({
+        target_role: 'admin',
+        title: 'Kas Lynk.id Otomatis Lunas',
+        message: `Pembayaran Rp${params.amount.toLocaleString('id-ID')} dari ${student?.full_name || 'Mahasiswa'} (${student?.nim}) otomatis diverifikasi LUNAS tanpa perlu campur tangan manual.`,
+        type: 'success'
+      });
+    } else {
+      // Notify Admins & Treasurers for manual verification
+      this.createNotification({
+        target_role: 'admin',
+        title: 'Pembayaran Menunggu Verifikasi',
+        message: `${student?.full_name || 'Mahasiswa'} telah mengunggah bukti Lynk.id untuk "${bill?.name || 'Tagihan'}". Silakan periksa di antrean verifikasi.`,
+        type: 'warning'
+      });
+    }
 
     this.recordAuditLog({
       user_id: params.studentId,
       user_name: student?.full_name,
       user_role: 'student',
-      action: 'SUBMIT_ONLINE_PAYMENT',
+      action: isAutoVerify ? 'AUTO_VERIFIED_ONLINE_PAYMENT' : 'SUBMIT_ONLINE_PAYMENT',
       entity_type: 'payments',
       entity_id: newPayment.id,
       new_data: newPayment,
-      description: `Mahasiswa ${student?.full_name} (${student?.nim}) mengunggah bukti bayar online untuk "${bill?.name}" sebesar Rp${params.amount.toLocaleString('id-ID')}`
+      description: isAutoVerify
+        ? `Pembayaran Lynk.id Rp${params.amount.toLocaleString('id-ID')} untuk ${student?.full_name} (${bill?.name}) otomatis diverifikasi LUNAS (100% Otomatis)`
+        : `Mahasiswa ${student?.full_name} (${student?.nim}) mengunggah bukti bayar online untuk "${bill?.name}" sebesar Rp${params.amount.toLocaleString('id-ID')}`
     });
 
     this.notify();
@@ -1507,6 +1534,151 @@ class DatabaseManager {
 
     this.notify();
     return newPayment;
+  }
+
+  // D. Process Webhook Payload from Lynk.id (Instant Auto-Verification)
+  public processLynkWebhook(payload: any, actorProfile?: UserProfile): {
+    success: boolean;
+    message: string;
+    matchedStudent?: UserProfile;
+    matchedBill?: Bill;
+    payment?: Payment;
+  } {
+    if (!payload) {
+      return { success: false, message: 'Payload webhook kosong.' };
+    }
+
+    const data = payload.data || payload;
+    const rawAmount = data.amount || data.total || data.gross_amount || payload.amount || 0;
+    const amount = Number(rawAmount);
+    const customerName = (data.customer_name || data.name || data.buyer_name || payload.customer_name || '').trim();
+    const customerEmail = (data.customer_email || data.email || payload.customer_email || '').trim().toLowerCase();
+    const customerPhone = (data.customer_phone || data.phone || payload.customer_phone || '').trim();
+    const productName = (data.product_name || data.item_name || data.title || payload.product_name || '').trim();
+    const transactionId = data.transaction_id || data.id || payload.transaction_id || `LNK_${Date.now()}`;
+    const status = (data.status || payload.status || 'PAID').toUpperCase();
+
+    if (status !== 'PAID' && status !== 'SUCCESS' && status !== 'COMPLETED') {
+      return { success: false, message: `Status transaksi belum lunas (Status: ${status}).` };
+    }
+
+    // 1. Find matching student
+    const activeStudents = this.getStudents().filter(s => s.status === 'active');
+    let matchedStudent = activeStudents.find(s => {
+      if (customerEmail && s.email && s.email.toLowerCase() === customerEmail) return true;
+      if (customerPhone && s.phone && s.phone.replace(/[^0-9]/g, '') === customerPhone.replace(/[^0-9]/g, '')) return true;
+      return false;
+    });
+
+    if (!matchedStudent && customerName) {
+      const q = customerName.toLowerCase();
+      matchedStudent = activeStudents.find(s => {
+        const sName = s.full_name.toLowerCase();
+        return sName === q || sName.includes(q) || q.includes(sName) || (s.nim && q.includes(s.nim.toLowerCase()));
+      });
+    }
+
+    if (!matchedStudent) {
+      matchedStudent = activeStudents[0];
+    }
+
+    if (!matchedStudent) {
+      return { success: false, message: 'Belum ada data mahasiswa terdaftar di sistem.' };
+    }
+
+    // 2. Find matching bill
+    const activeYear = this.getActiveAcademicYear();
+    const activeBills = this.getBills(activeYear.id).filter(b => b.is_active);
+    let matchedBill = activeBills.find(b => {
+      if (productName && b.name.toLowerCase().includes(productName.toLowerCase())) return true;
+      if (productName && productName.toLowerCase().includes(b.name.toLowerCase())) return true;
+      return false;
+    });
+
+    if (!matchedBill && amount > 0) {
+      matchedBill = activeBills.find(b => b.amount === amount);
+    }
+    if (!matchedBill) {
+      matchedBill = activeBills[0];
+    }
+
+    if (!matchedBill) {
+      return { success: false, message: 'Tidak ditemukan tagihan kas aktif yang sesuai di sistem.' };
+    }
+
+    // 3. Ensure student assignment exists
+    const existingAssignment = this.state.bill_assignments.find(
+      a => a.bill_id === matchedBill!.id && a.student_id === matchedStudent!.id
+    );
+    if (!existingAssignment) {
+      this.state.bill_assignments.push({
+        id: `asg_${matchedBill.id.slice(-4)}_${matchedStudent.id.slice(-4)}_${Date.now()}`,
+        bill_id: matchedBill.id,
+        student_id: matchedStudent.id,
+        created_at: new Date().toISOString()
+      });
+    }
+
+    const actor = actorProfile || this.getProfiles().find(p => p.role === 'admin' || p.role === 'treasurer') || {
+      id: 'p0000000-0000-0000-0000-000000000002',
+      full_name: 'Webhook Lynk.id',
+      role: 'treasurer' as const
+    };
+
+    // 4. Create verified payment
+    const newPayment: Payment = {
+      id: `m_lnk_${transactionId}`,
+      bill_id: matchedBill.id,
+      student_id: matchedStudent.id,
+      amount: amount > 0 ? amount : matchedBill.amount,
+      payment_method: 'online',
+      payment_date: new Date().toISOString().split('T')[0],
+      status: 'verified',
+      student_note: `Lunas otomatis via Webhook Lynk.id (Ref: ${transactionId})`,
+      admin_note: `Diverifikasi otomatis oleh Webhook Lynk.id. Produk: ${productName || matchedBill.name}`,
+      received_by: actor.id,
+      verified_by: actor.id,
+      verified_at: new Date().toISOString(),
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+
+    this.state.payments.unshift(newPayment);
+
+    // Create Notification
+    this.createNotification({
+      user_id: matchedStudent.id,
+      title: 'Pembayaran Lynk.id Berhasil!',
+      message: `Pembayaran kas sebesar Rp${newPayment.amount.toLocaleString('id-ID')} untuk "${matchedBill.name}" telah diverifikasi otomatis oleh Webhook Lynk.id.`,
+      type: 'success'
+    });
+
+    this.createNotification({
+      target_role: 'admin',
+      title: 'Webhook Lynk.id Diterima',
+      message: `Transaksi Rp${newPayment.amount.toLocaleString('id-ID')} dari ${matchedStudent.full_name} (${matchedStudent.nim}) otomatis diverifikasi lunas.`,
+      type: 'success'
+    });
+
+    this.recordAuditLog({
+      user_id: actor.id,
+      user_name: 'Webhook Lynk.id',
+      user_role: 'system',
+      action: 'LYNK_WEBHOOK_PAYMENT',
+      entity_type: 'payments',
+      entity_id: newPayment.id,
+      new_data: newPayment,
+      description: `Webhook Lynk.id memverifikasi pembayaran Rp${newPayment.amount.toLocaleString('id-ID')} untuk ${matchedStudent.full_name} (${matchedBill.name})`
+    });
+
+    this.notify();
+    return {
+      success: true,
+      message: `Webhook berhasil diproses! Pembayaran Rp${newPayment.amount.toLocaleString('id-ID')} untuk ${matchedStudent.full_name} otomatis diverifikasi LUNAS.`,
+      matchedStudent,
+      matchedBill,
+      payment: newPayment
+    };
   }
 
   // C. Cash payment reported directly by student (pending until treasurer verifies physical cash receipt)
@@ -1633,7 +1805,7 @@ class DatabaseManager {
     this.notify();
   }
 
-  // Delete / cancel payment record
+  // Delete / cancel payment record (Batalkan salah catat)
   public deletePayment(paymentId: string, actorProfile?: UserProfile): { success: boolean; message: string } {
     const payment = this.state.payments.find(p => p.id === paymentId);
     if (!payment) {
@@ -1654,11 +1826,61 @@ class DatabaseManager {
       entity_type: 'payments',
       entity_id: paymentId,
       old_data: payment,
-      description: `Menghapus transaksi pembayaran kas Rp${amount.toLocaleString('id-ID')} untuk ${student?.full_name || 'Mahasiswa'} (${bill?.name || 'Tagihan'})`
+      description: `Membatalkan/menghapus transaksi pembayaran kas Rp${amount.toLocaleString('id-ID')} untuk ${student?.full_name || 'Mahasiswa'} (${bill?.name || 'Tagihan'})`
     });
 
     this.notify();
-    return { success: true, message: `Transaksi pembayaran kas sebesar Rp${amount.toLocaleString('id-ID')} berhasil dihapus.` };
+    return { success: true, message: `Transaksi pembayaran kas sebesar Rp${amount.toLocaleString('id-ID')} berhasil dibatalkan.` };
+  }
+
+  // Update payment record (Koreksi salah catat nominal / tanggal / catatan)
+  public updatePayment(
+    paymentId: string,
+    updates: {
+      amount?: number;
+      payment_date?: string;
+      admin_note?: string;
+      payment_method?: 'cash' | 'online';
+    },
+    actorProfile?: UserProfile
+  ): { success: boolean; message: string; payment?: Payment } {
+    const payment = this.state.payments.find(p => p.id === paymentId);
+    if (!payment) {
+      return { success: false, message: 'Transaksi pembayaran tidak ditemukan.' };
+    }
+
+    const oldData = { ...payment };
+    if (updates.amount !== undefined && updates.amount > 0) {
+      payment.amount = Number(updates.amount);
+    }
+    if (updates.payment_date) {
+      payment.payment_date = updates.payment_date;
+    }
+    if (updates.admin_note !== undefined) {
+      payment.admin_note = updates.admin_note;
+    }
+    if (updates.payment_method) {
+      payment.payment_method = updates.payment_method;
+    }
+    payment.updated_at = new Date().toISOString();
+
+    const student = this.getProfileById(payment.student_id);
+    const bill = this.getBillById(payment.bill_id);
+
+    this.recordAuditLog({
+      user_id: actorProfile?.id,
+      user_name: actorProfile?.full_name,
+      user_role: actorProfile?.role,
+      action: 'UPDATE_PAYMENT',
+      entity_type: 'payments',
+      entity_id: paymentId,
+      old_data: oldData,
+      new_data: payment,
+      description: `Mengoreksi data pembayaran kas ${student?.full_name || 'Mahasiswa'} (${bill?.name || 'Tagihan'}) menjadi Rp${payment.amount.toLocaleString('id-ID')}`
+    });
+
+    this.notify();
+    return { success: true, message: 'Data pembayaran kas berhasil diperbarui.', payment };
   }
 
   // ----------------------------------------------------

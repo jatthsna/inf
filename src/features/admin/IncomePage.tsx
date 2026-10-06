@@ -31,7 +31,7 @@ export const IncomePage: React.FC<IncomePageProps> = ({ activeAcademicYear }) =>
   const [deleteTarget, setDeleteTarget] = useState<IncomeTransaction | null>(null);
   const [sourceName, setSourceName] = useState('');
   const [category, setCategory] = useState<any>('Donasi');
-  const [amount, setAmount] = useState<number>(100000);
+  const [amount, setAmount] = useState<number | ''>(100000);
   const [receivedDate, setReceivedDate] = useState(() => new Date().toISOString().split('T')[0]);
   const [notes, setNotes] = useState('');
   const [isSuccess, setIsSuccess] = useState(false);
@@ -77,7 +77,7 @@ export const IncomePage: React.FC<IncomePageProps> = ({ activeAcademicYear }) =>
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!sourceName.trim() || amount <= 0) {
+    if (!sourceName.trim() || !amount || Number(amount) <= 0) {
       setError('Harap isi nama sumber dan nominal pemasukan.');
       return;
     }
@@ -373,8 +373,21 @@ export const IncomePage: React.FC<IncomePageProps> = ({ activeAcademicYear }) =>
                   type="number"
                   min="1000"
                   step="1000"
+                  placeholder="Masukkan nominal..."
                   value={amount}
-                  onChange={(e) => setAmount(Number(e.target.value))}
+                  onFocus={(e) => {
+                    if (amount === 0) setAmount('');
+                    e.target.select();
+                  }}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    if (val === '') {
+                      setAmount('');
+                    } else {
+                      const num = parseInt(val, 10);
+                      setAmount(isNaN(num) ? '' : num);
+                    }
+                  }}
                   className="w-full pl-10 pr-3.5 py-2.5 bg-[#0B1120] border border-[#26354D] rounded-xl text-xs text-white font-mono focus:outline-none focus:border-cyan-500"
                   required
                 />

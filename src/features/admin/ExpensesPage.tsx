@@ -37,7 +37,7 @@ export const ExpensesPage: React.FC<ExpensesPageProps> = ({ activeAcademicYear }
   // Form State
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState<ExpenseCategory>('Kegiatan');
-  const [amount, setAmount] = useState<number>(50000);
+  const [amount, setAmount] = useState<number | ''>(50000);
   const [expenseDate, setExpenseDate] = useState(() => new Date().toISOString().split('T')[0]);
   const [notes, setNotes] = useState('');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -72,7 +72,7 @@ export const ExpensesPage: React.FC<ExpensesPageProps> = ({ activeAcademicYear }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!description.trim() || amount <= 0) {
+    if (!description.trim() || !amount || Number(amount) <= 0) {
       setError('Deskripsi dan nominal pengeluaran wajib diisi.');
       return;
     }
@@ -316,8 +316,21 @@ export const ExpensesPage: React.FC<ExpensesPageProps> = ({ activeAcademicYear }
                 type="number"
                 min="500"
                 step="500"
+                placeholder="Masukkan nominal..."
                 value={amount}
-                onChange={(e) => setAmount(Number(e.target.value))}
+                onFocus={(e) => {
+                  if (amount === 0) setAmount('');
+                  e.target.select();
+                }}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  if (val === '') {
+                    setAmount('');
+                  } else {
+                    const num = parseInt(val, 10);
+                    setAmount(isNaN(num) ? '' : num);
+                  }
+                }}
                 className="w-full px-3.5 py-2.5 bg-[#0B1120] border border-[#26354D] rounded-xl text-xs text-white font-mono font-bold focus:outline-none focus:border-cyan-500"
                 required
               />

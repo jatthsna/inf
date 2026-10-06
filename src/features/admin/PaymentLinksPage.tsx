@@ -17,13 +17,16 @@ import {
   XCircle, 
   AlertCircle,
   Copy,
-  Check
+  Check,
+  Webhook
 } from 'lucide-react';
+import { LynkWebhookModal } from './LynkWebhookModal';
 
 export const PaymentLinksPage: React.FC = () => {
   const { currentUser } = useAuth();
   const [links, setLinks] = useState<PaymentLink[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isWebhookModalOpen, setIsWebhookModalOpen] = useState(false);
   const [editingLink, setEditingLink] = useState<PaymentLink | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<PaymentLink | null>(null);
 
@@ -124,13 +127,23 @@ export const PaymentLinksPage: React.FC = () => {
           </p>
         </div>
 
-        <button
-          onClick={handleOpenAdd}
-          className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-md bg-cyan-400 hover:bg-cyan-300 text-slate-950 font-semibold text-xs transition-colors self-start sm:self-auto shadow-sm"
-        >
-          <Plus className="w-3.5 h-3.5" />
-          <span>Tambah Link Lynk.id</span>
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setIsWebhookModalOpen(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-800 text-xs font-bold text-cyan-400 hover:text-white transition-all shadow-sm"
+          >
+            <Webhook className="w-3.5 h-3.5" />
+            <span>Webhook Lynk.id</span>
+          </button>
+
+          <button
+            onClick={handleOpenAdd}
+            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-cyan-400 hover:bg-cyan-300 text-slate-950 font-bold text-xs transition-colors shadow-sm"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            <span>Tambah Link Lynk.id</span>
+          </button>
+        </div>
       </div>
 
       {/* Warning if no active links */}
@@ -358,6 +371,15 @@ export const PaymentLinksPage: React.FC = () => {
         variant="danger"
         confirmLabel="Hapus Link"
       />
+
+      {/* Lynk.id Webhook Modal */}
+      {isWebhookModalOpen && (
+        <LynkWebhookModal
+          isOpen={isWebhookModalOpen}
+          onClose={() => setIsWebhookModalOpen(false)}
+          onSuccess={reloadData}
+        />
+      )}
     </div>
   );
 };
