@@ -27,10 +27,8 @@ import {
   HandCoins,
   Pencil,
   Layers,
-  ArrowUpDown,
-  Webhook
+  ArrowUpDown
 } from 'lucide-react';
-import { LynkWebhookModal } from './LynkWebhookModal';
 
 interface PaymentsPageProps {
   activeAcademicYear: AcademicYear;
@@ -60,7 +58,6 @@ export const PaymentsPage: React.FC<PaymentsPageProps> = ({ activeAcademicYear }
   const [correctionSuccess, setCorrectionSuccess] = useState<string | null>(null);
   const [correctionError, setCorrectionError] = useState<string | null>(null);
 
-  const [isLynkWebhookOpen, setIsLynkWebhookOpen] = useState(false);
   const [adminNote, setAdminNote] = useState('');
   const [rejectReason, setRejectReason] = useState('Bukti transfer tidak valid atau nominal tidak sesuai.');
 
@@ -201,26 +198,15 @@ export const PaymentsPage: React.FC<PaymentsPageProps> = ({ activeAcademicYear }
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2.5">
-          <button
-            onClick={() => setIsLynkWebhookOpen(true)}
-            className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500/10 to-blue-500/10 hover:from-cyan-500/20 hover:to-blue-500/20 border border-cyan-500/30 text-xs font-bold text-cyan-300 hover:text-white transition-all shadow-sm active:scale-95"
-            title="Kelola & Uji Coba Webhook Lynk.id untuk verifikasi otomatis"
-          >
-            <Webhook className="w-4 h-4 text-cyan-400" />
-            <span>Webhook Lynk.id</span>
-          </button>
-
-          {/* Total verified banner */}
-          <div className="px-4 py-2 rounded-xl bg-slate-900 border border-slate-800 flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
-              <HandCoins className="w-4 h-4" />
-            </div>
-            <div>
-              <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Total Kas Lunas</span>
-              <div className="text-sm font-bold text-emerald-400 font-mono tabular-nums">
-                {formatCurrency(totalVerifiedAmount)}
-              </div>
+        {/* Total verified banner */}
+        <div className="px-4 py-2 rounded-xl bg-slate-900 border border-slate-800 flex items-center gap-3">
+          <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
+            <HandCoins className="w-4 h-4" />
+          </div>
+          <div>
+            <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Total Kas Lunas</span>
+            <div className="text-sm font-bold text-emerald-400 font-mono tabular-nums">
+              {formatCurrency(totalVerifiedAmount)}
             </div>
           </div>
         </div>
@@ -987,15 +973,6 @@ export const PaymentsPage: React.FC<PaymentsPageProps> = ({ activeAcademicYear }
           isOpen={Boolean(selectedReceiptPayment)}
           onClose={() => setSelectedReceiptPayment(null)}
           payment={selectedReceiptPayment}
-        />
-      )}
-
-      {/* Lynk.id Webhook Manager Modal */}
-      {isLynkWebhookOpen && (
-        <LynkWebhookModal
-          isOpen={isLynkWebhookOpen}
-          onClose={() => setIsLynkWebhookOpen(false)}
-          onSuccess={reloadData}
         />
       )}
     </div>

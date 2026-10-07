@@ -221,15 +221,9 @@ export const StudentQuickPayPortal: React.FC<StudentQuickPayPortalProps> = ({ on
             studentNote: studentNote.trim() || `Bukti bayar Lynk.id: ${proofReference || 'Terkonfirmasi'}`
           });
 
-          if (newPay.status === 'verified') {
-            setSuccessMessage(
-              `Alhamdulillah! Pembayaran Lynk.id untuk "${currentBill.name}" (${formatCurrency(currentBill.amount)}) BERHASIL & OTOMATIS LUNAS! Kuitansi sah siap dicetak.`
-            );
-          } else {
-            setSuccessMessage(
-              `Konfirmasi bayar Lynk.id untuk "${currentBill.name}" (${formatCurrency(currentBill.amount)}) berhasil dicatat.`
-            );
-          }
+          setSuccessMessage(
+            `Konfirmasi bayar via Lynk.id untuk "${currentBill.name}" (${formatCurrency(currentBill.amount)}) berhasil dicatat! Status: MENUNGGU VERIFIKASI (akan lunas setelah diverifikasi oleh Bendahara).`
+          );
         } else {
           db.submitCashPaymentReport({
             billId: currentBill.id,

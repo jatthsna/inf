@@ -188,8 +188,6 @@ export interface AppSettings {
   contact_person_name: string;
   contact_person_phone: string;
   lynk_default_url: string;
-  lynk_merchant_key?: string; // Lynk.id Merchant Key untuk verifikasi webhook
-  auto_verify_online?: boolean; // 100% otomatis lunas tanpa campur tangan bendahara
   enable_email_notifications: boolean;
   app_logo_url?: string;
   updated_at: string;

@@ -25,7 +25,8 @@ import {
   Trash2,
   UploadCloud,
   FileSpreadsheet,
-  CheckCircle2
+  CheckCircle2,
+  RotateCcw
 } from 'lucide-react';
 
 interface StudentsPageProps {
@@ -247,6 +248,20 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({ activeAcademicYear, 
         </div>
 
         <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
+          {students.length === 0 && (
+            <button
+              onClick={() => {
+                db.restoreSampleStudents();
+                reloadData();
+                setActionMessage({ text: 'Data 10 mahasiswa UNUGHA Cilacap berhasil dipulihkan!', type: 'success' });
+              }}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 font-semibold text-xs transition-colors shadow-sm"
+              title="Pulihkan data 10 mahasiswa contoh UNUGHA Cilacap"
+            >
+              <RotateCcw className="w-3.5 h-3.5 text-amber-400" />
+              <span>Pulihkan Data Mahasiswa</span>
+            </button>
+          )}
           {onNavigateTab && (
             <button
               onClick={() => onNavigateTab('admin-users')}
@@ -338,11 +353,32 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({ activeAcademicYear, 
 
       {/* Table */}
       {filteredStudents.length === 0 ? (
-        <EmptyState
-          icon={Users}
-          title="Tidak Ada Mahasiswa Ditemukan"
-          description="Coba ubah kata kunci pencarian atau filter kelas."
-        />
+        <div className="space-y-4">
+          <EmptyState
+            icon={Users}
+            title={students.length === 0 ? "Belum Ada Data Mahasiswa" : "Tidak Ada Mahasiswa Ditemukan"}
+            description={
+              students.length === 0 
+                ? "Data mahasiswa saat ini kosong. Anda dapat langsung memulihkan 10 data mahasiswa contoh bawaan UNUGHA Cilacap dengan satu klik di bawah."
+                : "Coba ubah kata kunci pencarian atau filter kelas."
+            }
+          />
+          {students.length === 0 && (
+            <div className="flex justify-center">
+              <button
+                onClick={() => {
+                  db.restoreSampleStudents();
+                  reloadData();
+                  setActionMessage({ text: 'Data 10 mahasiswa UNUGHA Cilacap berhasil dipulihkan!', type: 'success' });
+                }}
+                className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-slate-950 font-bold text-xs shadow-lg transition-all"
+              >
+                <RotateCcw className="w-4 h-4" />
+                <span>Pulihkan 10 Mahasiswa UNUGHA Bawaan</span>
+              </button>
+            </div>
+          )}
+        </div>
       ) : (
         <div className="rounded-2xl bg-[#151F32] border border-[#26354D] overflow-hidden">
           <div className="overflow-x-auto">

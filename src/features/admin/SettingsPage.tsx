@@ -46,8 +46,6 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onNavigateTab }) => 
   const [contactName, setContactName] = useState(settings.contact_person_name);
   const [contactPhone, setContactPhone] = useState(settings.contact_person_phone);
   const [defaultLynkUrl, setDefaultLynkUrl] = useState(settings.lynk_default_url);
-  const [merchantKey, setMerchantKey] = useState(settings.lynk_merchant_key || '');
-  const [autoVerifyOnline, setAutoVerifyOnline] = useState(settings.auto_verify_online !== false);
   const [appLogoUrl, setAppLogoUrl] = useState(settings.app_logo_url || '');
 
   const [savedSuccess, setSavedSuccess] = useState(false);
@@ -93,8 +91,6 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onNavigateTab }) => 
         setContactPhone(cur.contact_person_phone);
         setKorlasName(cur.korlas_name || 'Adam Satrol');
         setDefaultLynkUrl(cur.lynk_default_url);
-        setMerchantKey(cur.lynk_merchant_key || '');
-        setAutoVerifyOnline(cur.auto_verify_online !== false);
         setAppLogoUrl(cur.app_logo_url || '');
       }
     } finally {
@@ -112,8 +108,6 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onNavigateTab }) => 
     setContactPhone(cur.contact_person_phone);
     setKorlasName(cur.korlas_name || 'Adam Satrol');
     setDefaultLynkUrl(cur.lynk_default_url);
-    setMerchantKey(cur.lynk_merchant_key || '');
-    setAutoVerifyOnline(cur.auto_verify_online !== false);
     setAppLogoUrl(cur.app_logo_url || '');
   }, []);
 
@@ -178,8 +172,6 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onNavigateTab }) => 
       contact_person_name: contactName.trim(),
       contact_person_phone: contactPhone.trim(),
       lynk_default_url: defaultLynkUrl.trim(),
-      lynk_merchant_key: merchantKey.trim(),
-      auto_verify_online: autoVerifyOnline,
       app_logo_url: appLogoUrl.trim() || undefined
     }, currentUser);
 
@@ -374,39 +366,6 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onNavigateTab }) => 
               className="w-full px-3.5 py-2 bg-slate-950 border border-slate-800 rounded-lg text-xs text-white font-mono focus:outline-none focus:border-blue-500"
               required
             />
-          </div>
-
-          <div className="sm:col-span-2">
-            <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-              Lynk.id Merchant Key (Webhook Secret)
-            </label>
-            <input
-              type="password"
-              placeholder="Masukkan Merchant Key dari akun Lynk.id..."
-              value={merchantKey}
-              onChange={(e) => setMerchantKey(e.target.value)}
-              className="w-full px-3.5 py-2 bg-slate-950 border border-slate-800 rounded-lg text-xs text-white font-mono focus:outline-none focus:border-blue-500"
-            />
-            <p className="text-[11px] text-slate-400 mt-1">
-              Kunci rahasia dari akun Lynk.id (menu Settings &gt; Integrasi) untuk memverifikasi keabsahan webhook.
-            </p>
-          </div>
-
-          <div className="sm:col-span-2 pt-1">
-            <label className="flex items-start gap-2.5 p-3 rounded-xl bg-slate-950 border border-slate-800 cursor-pointer hover:border-slate-700 transition-colors">
-              <input
-                type="checkbox"
-                checked={autoVerifyOnline}
-                onChange={(e) => setAutoVerifyOnline(e.target.checked)}
-                className="mt-0.5 rounded border-slate-700 text-cyan-500 focus:ring-cyan-500"
-              />
-              <div>
-                <span className="text-xs font-bold text-white block">Auto-Verifikasi Lynk.id (100% Lunas Otomatis)</span>
-                <span className="text-[11px] text-slate-400 block mt-0.5">
-                  Setiap transaksi pembayaran online Lynk.id yang masuk langsung disahkan menjadi LUNAS seketika tanpa perlu campur tangan atau persetujuan manual bendahara.
-                </span>
-              </div>
-            </label>
           </div>
         </div>
 
